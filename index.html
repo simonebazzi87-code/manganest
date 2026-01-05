@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <title>MangaNest</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet">
+<meta charset="UTF-8">
+<title>MangaNest</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
 
@@ -16,64 +16,68 @@
 
 const { useState } = React;
 
+// ---------------- MENU ----------------
+function Menu({currentSection, setSection}) {
+  const sections = ["Menu", "Lettura", "Edicola", "Database", "Saghe", "Backup CSV"];
+  return (
+    <div className="bg-gray-800 text-white p-3 flex gap-3 flex-wrap">
+      {sections.map(s => (
+        <button key={s} className={`px-3 py-1 rounded ${currentSection===s?"bg-gray-600":""}`} onClick={()=>setSection(s)}>
+          {s}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------- APP PRINCIPALE ----------------
 function App() {
-  const [readers, setReaders] = useState([
-    { name: "Simone", color: "green" },
-    { name: "Andrea", color: "yellow" }
-  ]);
-  const [currentReader, setCurrentReader] = useState(readers[0].name);
+  const [currentSection, setCurrentSection] = useState("Menu");
+  const [readers] = useState([{ name: "Simone", color: "green" }, { name: "Andrea", color: "yellow" }]);
+  const [currentReader, setCurrentReader] = useState(null);
 
   const [sagas, setSagas] = useState([]);
   const [series, setSeries] = useState([]);
-  const [newSaga, setNewSaga] = useState("");
-  const [newSeries, setNewSeries] = useState("");
 
-  // AGGIUNGI SAGHE
-  const addSaga = () => {
-    if (!newSaga.trim()) return;
-    setSagas([...sagas, { name: newSaga, favoriteBy: [] }]);
-    setNewSaga("");
-  };
+  // Selezione reader
+  if (!currentReader) {
+    return (
+      <div className="p-10 text-center">
+        <h1 className="text-3xl font-bold mb-4">Seleziona chi sta usando l'app</h1>
+        {readers.map(r=>(
+          <button key={r.name} className={`px-4 py-2 m-2 rounded text-white`} style={{backgroundColor:r.color}} onClick={()=>setCurrentReader(r.name)}>
+            {r.name}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
-  // AGGIUNGI SERIE
-  const addSeries = () => {
-    if (!newSeries.trim()) return;
-    setSeries([
-      ...series,
-      {
-        name: newSeries,
-        saga: null,
-        status: "in corso",
-        authors: [],
-        publisher: "",
-        orderIndex: series.length,
-        volumes: [],
-        favoriteBy: []
-      }
-    ]);
-    setNewSeries("");
-  };
-
-  // AGGIUNGI VOLUMI (singolo o intervallo)
-  const addVolume = (sIndex) => {
-    const volNum = prompt("Numero volume singolo o intervallo (es. 1 o 3-7 o 0 o 0.5)");
-    if (!volNum) return;
-    const updated = [...series];
-    if (volNum.includes("-")) {
-      const [start, end] = volNum.split("-").map(Number);
-      for (let i = Math.min(start,end); i <= Math.max(start,end); i++) {
-        if (!updated[sIndex].volumes.find(v => v.number===i))
-          updated[sIndex].volumes.push({number:i, read:{}, isLast:false});
-      }
-    } else {
-      const n = Number(volNum);
-      if (!updated[sIndex].volumes.find(v => v.number===n))
-        updated[sIndex].volumes.push({number:n, read:{}, isLast:false});
+  // Sezioni
+  const renderSection = () => {
+    switch(currentSection) {
+      case "Menu": return <div className="p-4 text-center"><h2 className="text-2xl font-bold">Benvenuto, {currentReader}</h2><p>Seleziona una sezione dal menu in alto.</p></div>;
+      case "Lettura": return <Lettura series={series} setSeries={setSeries} currentReader={currentReader} />;
+      case "Edicola": return <Edicola series={series} />;
+      case "Database": return <Database series={series} setSeries={setSeries} sagas={sagas} setSagas={setSagas} />;
+      case "Saghe": return <Saghe sagas={sagas} setSagas={setSagas} />;
+      case "Backup CSV": return <BackupCSV series={series} />;
+      default: return <div>Sezione non trovata</div>;
     }
-    setSeries(updated);
   };
 
-  // TOGGLE LETTURA
+  return (
+    <div>
+      <Menu currentSection={currentSection} setSection={setCurrentSection} />
+      {renderSection()}
+    </div>
+  );
+}
+
+// ---------------- COMPONENTI SEZIONI ----------------
+
+// Lettura
+function Lettura({series, setSeries, currentReader}) {
   const toggleRead = (sIndex, vIndex) => {
     const updated = [...series];
     const vol = updated[sIndex].volumes[vIndex];
@@ -81,109 +85,169 @@ function App() {
     setSeries(updated);
   };
 
-  // SEGNA TUTTI LETTI
+  const deleteVolume = (sIndex, vIndex) => {
+    if(window.confirm("Sei sicuro di voler eliminare questo volume?")) {
+      const updated = [...series];
+      updated[sIndex].volumes = updated[sIndex].volumes.filter((_,i)=>i!==vIndex);
+      setSeries(updated);
+    }
+  };
+
   const markAllRead = (sIndex) => {
     const updated = [...series];
-    updated[sIndex].volumes.forEach(v => v.read[currentReader]=true);
+    updated[sIndex].volumes.forEach(v=>v.read[currentReader]=true);
     setSeries(updated);
   };
 
-  // CUORI SERIE/SAGA
-  const toggleFavoriteSeries = (sIndex) => {
+  const toggleLastVolume = (sIndex,vIndex) => {
     const updated = [...series];
-    const favIndex = updated[sIndex].favoriteBy.indexOf(currentReader);
-    if(favIndex===-1) updated[sIndex].favoriteBy.push(currentReader);
-    else updated[sIndex].favoriteBy.splice(favIndex,1);
+    updated[sIndex].volumes.forEach(v=>v.isLast=false);
+    updated[sIndex].volumes[vIndex].isLast=true;
+    updated[sIndex].status="finita";
     setSeries(updated);
   };
-  const toggleFavoriteSaga = (sIndex) => {
-    const updated = [...sagas];
-    const favIndex = updated[sIndex].favoriteBy.indexOf(currentReader);
-    if(favIndex===-1) updated[sIndex].favoriteBy.push(currentReader);
-    else updated[sIndex].favoriteBy.splice(favIndex,1);
-    setSagas(updated);
-  };
-
-  // FLAG ULTIMO VOLUME
-  const toggleLastVolume = (sIndex, vIndex) => {
-    const updated = [...series];
-    updated[sIndex].volumes.forEach(v => v.isLast=false);
-    updated[sIndex].volumes[vIndex].isLast = true;
-    updated[sIndex].status = "finita";
-    setSeries(updated);
-  };
-
-  const lastVolumeNumber = (s) => s.volumes.length ? Math.max(...s.volumes.map(v=>v.number)) : 0;
 
   return (
-    <div className="p-4 max-w-4xl mx-auto space-y-4 font-sans">
-
-      <h1 className="text-3xl font-bold">MangaNest</h1>
-
-      <div className="flex gap-2">
-        <input className="border rounded px-2 py-1" placeholder="Nuova saga" value={newSaga} onChange={e=>setNewSaga(e.target.value)}/>
-        <button className="bg-blue-500 text-white px-3 rounded" onClick={addSaga}>+ Saga</button>
-      </div>
-
-      <div className="flex gap-2">
-        <input className="border rounded px-2 py-1" placeholder="Nuova serie" value={newSeries} onChange={e=>setNewSeries(e.target.value)}/>
-        <button className="bg-green-500 text-white px-3 rounded" onClick={addSeries}>+ Serie</button>
-      </div>
-
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-2">📖 Lettura</h2>
+      {series.length===0 && <p>Nessuna serie inserita</p>}
       {series.map((s,sIndex)=>(
-        <div key={sIndex} className="border rounded p-3 space-y-2 shadow-md bg-white">
+        <div key={sIndex} className="border rounded p-3 mb-2 bg-white">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">{s.name} {s.favoriteBy.includes(currentReader)?"❤️":""}</h2>
-            <div className="flex gap-2">
-              <button className="bg-gray-200 px-2 rounded" onClick={()=>markAllRead(sIndex)}>Segna tutta letta</button>
-              <button className="bg-gray-200 px-2 rounded" onClick={()=>addVolume(sIndex)}>+ Volume/i</button>
-              <button className="bg-gray-200 px-2 rounded" onClick={()=>toggleFavoriteSeries(sIndex)}>❤️ Serie</button>
-            </div>
+            <h3 className="font-semibold">{s.name} ({s.status})</h3>
+            <button className="bg-gray-200 px-2 rounded text-sm" onClick={()=>markAllRead(sIndex)}>Segna tutta letta</button>
           </div>
-
-          <div className="flex gap-4 text-sm">
-            <span>Stato: {s.status}</span>
-            <span>Editore: {s.publisher}</span>
-            <span>Autori: {s.authors.join(", ")}</span>
-          </div>
-
           {s.volumes.map((v,vIndex)=>(
-            <div key={vIndex} className="flex items-center justify-between border rounded p-2">
-              <span>Volume {v.number} {v.isLast?"(Ultimo)":""}</span>
-              <div className="flex gap-4 items-center">
-                <label className="flex items-center gap-1">
-                  <input type="checkbox" checked={v.read[currentReader]||false} onChange={()=>toggleRead(sIndex,vIndex)}/> {currentReader}
-                </label>
-                <button className="bg-red-200 px-2 rounded" onClick={()=>toggleLastVolume(sIndex,vIndex)}>Ultimo</button>
+            <div key={vIndex} className="flex items-center justify-between border p-1 my-1 rounded">
+              <label className="flex gap-2 items-center">
+                <input type="checkbox" checked={v.read[currentReader]||false} onChange={()=>toggleRead(sIndex,vIndex)} />
+                Volume {v.number} {v.isLast?"(Ultimo)":""}
+              </label>
+              <div className="flex gap-2">
+                <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteVolume(sIndex,vIndex)}>Elimina</button>
+                <button className="bg-yellow-500 text-white px-2 rounded text-sm" onClick={()=>toggleLastVolume(sIndex,vIndex)}>Ultimo</button>
               </div>
             </div>
           ))}
-
         </div>
       ))}
+    </div>
+  );
+}
 
-      <div className="border rounded p-3 shadow-md bg-white">
-        <h2 className="text-xl font-semibold">🏪 Volumi mancanti</h2>
-        {series.map((s)=>{
-          const missing = s.volumes.filter(v => !v.read[readers[0].name] || !v.read[readers[1].name]);
-          if(missing.length===0) return null;
-          return (
-            <div key={s.name} className="mb-2">
-              <strong>{s.name}</strong>: {missing.map(v=>v.number).join(", ")} (ultimo volume registrato: {lastVolumeNumber(s)})
-            </div>
-          )
-        })}
+// Edicola
+function Edicola({series}) {
+  const missingVolumes = series.map(s=>{
+    const missing = s.volumes.filter(v => !Object.values(v.read).every(vv=>vv===true));
+    return {name:s.name, missing};
+  }).filter(s=>s.missing.length>0);
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-2">🏪 Edicola - Volumi mancanti</h2>
+      {missingVolumes.length===0 && <p>Tutto aggiornato!</p>}
+      {missingVolumes.map((s,i)=>(
+        <div key={i}><strong>{s.name}</strong>: {s.missing.map(v=>v.number).join(", ")}</div>
+      ))}
+    </div>
+  );
+}
+
+// Database
+function Database({series,setSeries,sagas,setSagas}) {
+  const [newSaga, setNewSaga] = useState("");
+  const [newSeries, setNewSeries] = useState("");
+
+  const addSaga = () => {if(newSaga.trim()){setSagas([...sagas,{name:newSaga}]);setNewSaga("");}};
+  const addSeries = () => {if(newSeries.trim()){setSeries([...series,{name:newSeries,status:"in corso",volumes:[],saga:null}]);setNewSeries("");}};
+
+  const deleteSaga = (index) => {
+    if(window.confirm("Sei sicuro di voler eliminare questa saga?")) {
+      setSagas(sagas.filter((_,i)=>i!==index));
+      setSeries(series.map(s=>s.saga===sagas[index].name?{...s,saga:null}:s));
+    }
+  };
+
+  const deleteSeries = (index) => {
+    if(window.confirm("Sei sicuro di voler eliminare questa serie? Tutti i volumi saranno persi")) {
+      setSeries(series.filter((_,i)=>i!==index));
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-2">🗄️ Database</h2>
+      <div className="flex gap-2 mb-2">
+        <input className="border px-2 py-1" placeholder="Nuova saga" value={newSaga} onChange={e=>setNewSaga(e.target.value)} />
+        <button className="bg-blue-500 text-white px-3 rounded" onClick={addSaga}>+ Saga</button>
       </div>
+      <div className="flex gap-2 mb-2">
+        <input className="border px-2 py-1" placeholder="Nuova serie" value={newSeries} onChange={e=>setNewSeries(e.target.value)} />
+        <button className="bg-green-500 text-white px-3 rounded" onClick={addSeries}>+ Serie</button>
+      </div>
+      <div className="mt-4">
+        <h3 className="font-semibold mb-1">Saghe registrate:</h3>
+        {sagas.map((s,i)=>(
+          <div key={i} className="flex justify-between items-center mb-1">
+            <span>{s.name}</span>
+            <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteSaga(i)}>Elimina</button>
+          </div>
+        ))}
+        <h3 className="font-semibold mt-4 mb-1">Serie registrate:</h3>
+        {series.map((s,i)=>(
+          <div key={i} className="flex justify-between items-center mb-1">
+            <span>{s.name} ({s.saga || "nessuna saga"})</span>
+            <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteSeries(i)}>Elimina</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      <div className="border rounded p-3 shadow-md bg-white">
-        <button className="bg-purple-500 text-white px-3 py-1 rounded"
-          onClick={()=>{
-            const csv = series.map(s=>s.volumes.map(v=>`${s.name},${v.number},${Object.keys(v.read).filter(r=>v.read[r]).join("|")},${s.status},${s.authors.join("|")},${s.publisher},${v.isLast}`).join("\n")).join("\n");
-            const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download","manga_backup.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }}
+// Saghe
+function Saghe({sagas,setSagas}) {
+  const deleteSaga = (index) => {
+    if(window.confirm("Sei sicuro di voler eliminare questa saga?")) {
+      setSagas(sagas.filter((_,i)=>i!==index));
+    }
+  };
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-2">📚 Saghe</h2>
+      {sagas.length===0 && <p>Nessuna saga inserita</p>}
+      {sagas.map((s,i)=>
+        <div key={i} className="flex justify-between mb-1 items-center">
+          <span>{s.name}</span>
+          <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteSaga(i)}>Elimina</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Backup CSV
+function BackupCSV({series}) {
+  const exportCSV = () => {
+    const csv = series.map(s=>s.volumes.map(v=>`${s.name},${v.number},${Object.keys(v.read).filter(r=>v.read[r]).join("|")},${s.status}`).join("\n")).join("\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download","manga_backup.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-2">📦 Backup CSV</h2>
+      <button className="bg-purple-500 text-white px-4 py-2 rounded" onClick={exportCSV}>Scarica CSV</button>
+    </div>
+  );
+}
+
+// ---------------- RENDER APP ----------------
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+</script>
+</body>
+</html>
