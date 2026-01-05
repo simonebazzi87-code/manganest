@@ -3,251 +3,219 @@
 <head>
 <meta charset="UTF-8">
 <title>MangaNest</title>
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet">
+<style>
+body { font-family: Arial, sans-serif; background: #f0f0f0; margin:0; padding:0;}
+header { background: #333; color: white; padding: 10px; display:flex; gap:10px; flex-wrap:wrap;}
+header button { padding: 5px 10px; border:none; border-radius:4px; cursor:pointer; color:white;}
+header button.active { background: #555; }
+section { padding: 15px; }
+.series-box, .saga-box, .volume-box { background:white; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc; }
+button.red { background:red; color:white;}
+button.green { background:green; color:white;}
+button.yellow { background:goldenrod; color:white;}
+</style>
 </head>
-<body class="bg-gray-100">
+<body>
 
-<div id="root"></div>
+<header id="menu"></header>
+<section id="content"></section>
 
-<script type="text/babel">
+<script>
+let currentReader = null;
+let currentSection = "Menu";
 
-const { useState } = React;
+const readers = [
+  {name:"Simone", color:"green"},
+  {name:"Andrea", color:"yellow"}
+];
 
-// ---------------- MENU ----------------
-function Menu({currentSection, setSection}) {
-  const sections = ["Menu", "Lettura", "Edicola", "Database", "Saghe", "Backup CSV"];
-  return (
-    <div className="bg-gray-800 text-white p-3 flex gap-3 flex-wrap">
-      {sections.map(s => (
-        <button key={s} className={`px-3 py-1 rounded ${currentSection===s?"bg-gray-600":""}`} onClick={()=>setSection(s)}>
-          {s}
-        </button>
-      ))}
-    </div>
-  );
+const sagas = [];
+const series = [];
+
+// ------- FUNZIONI MENU -------
+function renderMenu() {
+  const menuDiv = document.getElementById('menu');
+  menuDiv.innerHTML = '';
+  const sections = ["Menu","Lettura","Edicola","Database","Saghe","Backup CSV"];
+  sections.forEach(sec => {
+    const btn = document.createElement('button');
+    btn.textContent = sec;
+    btn.className = (currentSection===sec) ? 'active' : '';
+    btn.onclick = () => { currentSection=sec; renderContent(); renderMenu(); };
+    menuDiv.appendChild(btn);
+  });
 }
 
-// ---------------- APP PRINCIPALE ----------------
-function App() {
-  const [currentSection, setCurrentSection] = useState("Menu");
-  const [readers] = useState([{ name: "Simone", color: "green" }, { name: "Andrea", color: "yellow" }]);
-  const [currentReader, setCurrentReader] = useState(null);
+// ------- FUNZIONI SEZIONI -------
+function renderContent() {
+  const content = document.getElementById('content');
+  content.innerHTML = '';
 
-  const [sagas, setSagas] = useState([]);
-  const [series, setSeries] = useState([]);
-
-  // Selezione reader
-  if (!currentReader) {
-    return (
-      <div className="p-10 text-center">
-        <h1 className="text-3xl font-bold mb-4">Seleziona chi sta usando l'app</h1>
-        {readers.map(r=>(
-          <button key={r.name} className={`px-4 py-2 m-2 rounded text-white`} style={{backgroundColor:r.color}} onClick={()=>setCurrentReader(r.name)}>
-            {r.name}
-          </button>
-        ))}
-      </div>
-    );
+  // Selezione reader all'avvio
+  if(!currentReader){
+    const h1 = document.createElement('h1'); h1.textContent="Chi sta usando l'app?"; h1.style.textAlign="center";
+    content.appendChild(h1);
+    readers.forEach(r=>{
+      const btn = document.createElement('button');
+      btn.textContent = r.name; 
+      btn.style.background=r.color; 
+      btn.style.color="white";
+      btn.style.margin="5px"; btn.style.padding="10px"; btn.style.border="none"; btn.style.borderRadius="4px";
+      btn.onclick = ()=>{ currentReader=r.name; renderContent(); renderMenu(); };
+      content.appendChild(btn);
+    });
+    return;
   }
 
-  // Sezioni
-  const renderSection = () => {
-    switch(currentSection) {
-      case "Menu": return <div className="p-4 text-center"><h2 className="text-2xl font-bold">Benvenuto, {currentReader}</h2><p>Seleziona una sezione dal menu in alto.</p></div>;
-      case "Lettura": return <Lettura series={series} setSeries={setSeries} currentReader={currentReader} />;
-      case "Edicola": return <Edicola series={series} />;
-      case "Database": return <Database series={series} setSeries={setSeries} sagas={sagas} setSagas={setSagas} />;
-      case "Saghe": return <Saghe sagas={sagas} setSagas={setSagas} />;
-      case "Backup CSV": return <BackupCSV series={series} />;
-      default: return <div>Sezione non trovata</div>;
+  switch(currentSection){
+    case "Menu":
+      const h = document.createElement('h2'); h.textContent="Benvenuto "+currentReader; content.appendChild(h);
+      const p = document.createElement('p'); p.textContent="Seleziona una sezione dal menu in alto."; content.appendChild(p);
+      break;
+
+    case "Lettura":
+      renderLettura(content);
+      break;
+    case "Edicola":
+      renderEdicola(content);
+      break;
+    case "Database":
+      renderDatabase(content);
+      break;
+    case "Saghe":
+      renderSaghe(content);
+      break;
+    case "Backup CSV":
+      renderBackup(content);
+      break;
+  }
+}
+
+// ------- LETTURA -------
+function renderLettura(container){
+  const h = document.createElement('h2'); h.textContent="📖 Lettura"; container.appendChild(h);
+  if(series.length===0){ const p=document.createElement('p'); p.textContent="Nessuna serie"; container.appendChild(p); return;}
+  series.forEach((s,sIndex)=>{
+    const div = document.createElement('div'); div.className='series-box';
+    const title = document.createElement('div'); title.style.fontWeight='bold'; title.textContent=s.name+" ("+s.status+")";
+    div.appendChild(title);
+
+    s.volumes.forEach((v,vIndex)=>{
+      const volDiv = document.createElement('div'); volDiv.className='volume-box'; volDiv.style.display='flex'; volDiv.style.justifyContent='space-between'; volDiv.style.alignItems='center';
+
+      const label = document.createElement('label');
+      const checkbox = document.createElement('input'); checkbox.type='checkbox';
+      checkbox.checked = v.read[currentReader] || false;
+      checkbox.onchange = ()=>{ v.read[currentReader] = checkbox.checked; };
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(" Volume "+v.number + (v.isLast?" (Ultimo)":"")));
+      volDiv.appendChild(label);
+
+      const btns = document.createElement('div');
+      const delBtn = document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red'; delBtn.onclick = ()=>{
+        if(confirm("Eliminare volume?")){ s.volumes.splice(vIndex,1); renderContent(); }
+      };
+      const lastBtn = document.createElement('button'); lastBtn.textContent='Ultimo'; lastBtn.className='yellow'; lastBtn.onclick = ()=>{
+        s.volumes.forEach(vv=>vv.isLast=false); s.volumes[vIndex].isLast=true; s.status="finita"; renderContent();
+      };
+      btns.appendChild(delBtn); btns.appendChild(lastBtn);
+      btns.style.display='flex'; btns.style.gap='5px';
+      volDiv.appendChild(btns);
+
+      div.appendChild(volDiv);
+    });
+
+    const markAllBtn = document.createElement('button'); markAllBtn.textContent='Segna tutta letta'; markAllBtn.className='green';
+    markAllBtn.onclick = ()=>{ s.volumes.forEach(v=>v.read[currentReader]=true); renderContent(); };
+    div.appendChild(markAllBtn);
+
+    container.appendChild(div);
+  });
+}
+
+// ------- EDICOLA -------
+function renderEdicola(container){
+  const h = document.createElement('h2'); h.textContent="🏪 Edicola - Volumi mancanti"; container.appendChild(h);
+  let missing=false;
+  series.forEach(s=>{
+    const miss = s.volumes.filter(v=>!Object.values(v.read).every(r=>r===true));
+    if(miss.length>0){ missing=true;
+      const div=document.createElement('div'); div.innerHTML="<strong>"+s.name+"</strong>: "+miss.map(v=>v.number).join(", "); container.appendChild(div);
     }
-  };
-
-  return (
-    <div>
-      <Menu currentSection={currentSection} setSection={setCurrentSection} />
-      {renderSection()}
-    </div>
-  );
+  });
+  if(!missing){ const p=document.createElement('p'); p.textContent="Tutto aggiornato!"; container.appendChild(p); }
 }
 
-// ---------------- COMPONENTI SEZIONI ----------------
+// ------- DATABASE -------
+function renderDatabase(container){
+  const h = document.createElement('h2'); h.textContent="🗄️ Database"; container.appendChild(h);
 
-// Lettura
-function Lettura({series, setSeries, currentReader}) {
-  const toggleRead = (sIndex, vIndex) => {
-    const updated = [...series];
-    const vol = updated[sIndex].volumes[vIndex];
-    vol.read[currentReader] = !vol.read[currentReader];
-    setSeries(updated);
+  const sagaInput = document.createElement('input'); sagaInput.placeholder="Nuova saga";
+  const sagaBtn = document.createElement('button'); sagaBtn.textContent="+ Saga"; sagaBtn.onclick=()=>{
+    if(sagaInput.value.trim()){ sagas.push({name:sagaInput.value}); sagaInput.value=''; renderContent(); }
   };
+  container.appendChild(sagaInput); container.appendChild(sagaBtn);
 
-  const deleteVolume = (sIndex, vIndex) => {
-    if(window.confirm("Sei sicuro di voler eliminare questo volume?")) {
-      const updated = [...series];
-      updated[sIndex].volumes = updated[sIndex].volumes.filter((_,i)=>i!==vIndex);
-      setSeries(updated);
-    }
+  const seriesInput = document.createElement('input'); seriesInput.placeholder="Nuova serie";
+  const seriesBtn = document.createElement('button'); seriesBtn.textContent="+ Serie"; seriesBtn.onclick=()=>{
+    if(seriesInput.value.trim()){ series.push({name:seriesInput.value,status:"in corso",volumes:[],saga:null}); seriesInput.value=''; renderContent(); }
   };
+  container.appendChild(document.createElement('br'));
+  container.appendChild(seriesInput); container.appendChild(seriesBtn);
 
-  const markAllRead = (sIndex) => {
-    const updated = [...series];
-    updated[sIndex].volumes.forEach(v=>v.read[currentReader]=true);
-    setSeries(updated);
-  };
+  // Mostra saghe
+  const sH = document.createElement('h3'); sH.textContent="Saghe:"; container.appendChild(sH);
+  sagas.forEach((s,i)=>{
+    const div=document.createElement('div'); div.className='saga-box';
+    div.textContent=s.name;
+    const delBtn=document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red';
+    delBtn.onclick = ()=>{ if(confirm("Eliminare saga?")){ sagas.splice(i,1); renderContent(); } };
+    div.appendChild(delBtn);
+    container.appendChild(div);
+  });
 
-  const toggleLastVolume = (sIndex,vIndex) => {
-    const updated = [...series];
-    updated[sIndex].volumes.forEach(v=>v.isLast=false);
-    updated[sIndex].volumes[vIndex].isLast=true;
-    updated[sIndex].status="finita";
-    setSeries(updated);
-  };
-
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">📖 Lettura</h2>
-      {series.length===0 && <p>Nessuna serie inserita</p>}
-      {series.map((s,sIndex)=>(
-        <div key={sIndex} className="border rounded p-3 mb-2 bg-white">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold">{s.name} ({s.status})</h3>
-            <button className="bg-gray-200 px-2 rounded text-sm" onClick={()=>markAllRead(sIndex)}>Segna tutta letta</button>
-          </div>
-          {s.volumes.map((v,vIndex)=>(
-            <div key={vIndex} className="flex items-center justify-between border p-1 my-1 rounded">
-              <label className="flex gap-2 items-center">
-                <input type="checkbox" checked={v.read[currentReader]||false} onChange={()=>toggleRead(sIndex,vIndex)} />
-                Volume {v.number} {v.isLast?"(Ultimo)":""}
-              </label>
-              <div className="flex gap-2">
-                <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteVolume(sIndex,vIndex)}>Elimina</button>
-                <button className="bg-yellow-500 text-white px-2 rounded text-sm" onClick={()=>toggleLastVolume(sIndex,vIndex)}>Ultimo</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
+  // Mostra serie
+  const srH = document.createElement('h3'); srH.textContent="Serie:"; container.appendChild(srH);
+  series.forEach((s,i)=>{
+    const div=document.createElement('div'); div.className='series-box';
+    div.textContent=s.name + " ("+(s.saga||"nessuna saga")+")";
+    const delBtn=document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red';
+    delBtn.onclick = ()=>{ if(confirm("Eliminare serie?")){ series.splice(i,1); renderContent(); } };
+    div.appendChild(delBtn);
+    container.appendChild(div);
+  });
 }
 
-// Edicola
-function Edicola({series}) {
-  const missingVolumes = series.map(s=>{
-    const missing = s.volumes.filter(v => !Object.values(v.read).every(vv=>vv===true));
-    return {name:s.name, missing};
-  }).filter(s=>s.missing.length>0);
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">🏪 Edicola - Volumi mancanti</h2>
-      {missingVolumes.length===0 && <p>Tutto aggiornato!</p>}
-      {missingVolumes.map((s,i)=>(
-        <div key={i}><strong>{s.name}</strong>: {s.missing.map(v=>v.number).join(", ")}</div>
-      ))}
-    </div>
-  );
+// ------- SAGHE -------
+function renderSaghe(container){
+  const h=document.createElement('h2'); h.textContent="📚 Saghe"; container.appendChild(h);
+  if(sagas.length===0){ const p=document.createElement('p'); p.textContent="Nessuna saga"; container.appendChild(p); return; }
+  sagas.forEach((s,i)=>{
+    const div=document.createElement('div'); div.className='saga-box'; div.textContent=s.name;
+    const delBtn=document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red';
+    delBtn.onclick = ()=>{ if(confirm("Eliminare saga?")){ sagas.splice(i,1); renderContent(); } };
+    div.appendChild(delBtn);
+    container.appendChild(div);
+  });
 }
 
-// Database
-function Database({series,setSeries,sagas,setSagas}) {
-  const [newSaga, setNewSaga] = useState("");
-  const [newSeries, setNewSeries] = useState("");
-
-  const addSaga = () => {if(newSaga.trim()){setSagas([...sagas,{name:newSaga}]);setNewSaga("");}};
-  const addSeries = () => {if(newSeries.trim()){setSeries([...series,{name:newSeries,status:"in corso",volumes:[],saga:null}]);setNewSeries("");}};
-
-  const deleteSaga = (index) => {
-    if(window.confirm("Sei sicuro di voler eliminare questa saga?")) {
-      setSagas(sagas.filter((_,i)=>i!==index));
-      setSeries(series.map(s=>s.saga===sagas[index].name?{...s,saga:null}:s));
-    }
+// ------- BACKUP CSV -------
+function renderBackup(container){
+  const h=document.createElement('h2'); h.textContent="📦 Backup CSV"; container.appendChild(h);
+  const btn=document.createElement('button'); btn.textContent="Scarica CSV"; btn.className='green';
+  btn.onclick=()=>{
+    let csv = series.map(s=>s.volumes.map(v=>s.name+","+v.number+","+Object.keys(v.read).filter(r=>v.read[r]).join("|")+","+s.status).join("\n")).join("\n");
+    const blob = new Blob([csv],{type:"text/csv"});
+    const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download="manga_backup.csv"; document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
-
-  const deleteSeries = (index) => {
-    if(window.confirm("Sei sicuro di voler eliminare questa serie? Tutti i volumi saranno persi")) {
-      setSeries(series.filter((_,i)=>i!==index));
-    }
-  };
-
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">🗄️ Database</h2>
-      <div className="flex gap-2 mb-2">
-        <input className="border px-2 py-1" placeholder="Nuova saga" value={newSaga} onChange={e=>setNewSaga(e.target.value)} />
-        <button className="bg-blue-500 text-white px-3 rounded" onClick={addSaga}>+ Saga</button>
-      </div>
-      <div className="flex gap-2 mb-2">
-        <input className="border px-2 py-1" placeholder="Nuova serie" value={newSeries} onChange={e=>setNewSeries(e.target.value)} />
-        <button className="bg-green-500 text-white px-3 rounded" onClick={addSeries}>+ Serie</button>
-      </div>
-      <div className="mt-4">
-        <h3 className="font-semibold mb-1">Saghe registrate:</h3>
-        {sagas.map((s,i)=>(
-          <div key={i} className="flex justify-between items-center mb-1">
-            <span>{s.name}</span>
-            <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteSaga(i)}>Elimina</button>
-          </div>
-        ))}
-        <h3 className="font-semibold mt-4 mb-1">Serie registrate:</h3>
-        {series.map((s,i)=>(
-          <div key={i} className="flex justify-between items-center mb-1">
-            <span>{s.name} ({s.saga || "nessuna saga"})</span>
-            <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteSeries(i)}>Elimina</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  container.appendChild(btn);
 }
 
-// Saghe
-function Saghe({sagas,setSagas}) {
-  const deleteSaga = (index) => {
-    if(window.confirm("Sei sicuro di voler eliminare questa saga?")) {
-      setSagas(sagas.filter((_,i)=>i!==index));
-    }
-  };
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">📚 Saghe</h2>
-      {sagas.length===0 && <p>Nessuna saga inserita</p>}
-      {sagas.map((s,i)=>
-        <div key={i} className="flex justify-between mb-1 items-center">
-          <span>{s.name}</span>
-          <button className="bg-red-500 text-white px-2 rounded text-sm" onClick={()=>deleteSaga(i)}>Elimina</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Backup CSV
-function BackupCSV({series}) {
-  const exportCSV = () => {
-    const csv = series.map(s=>s.volumes.map(v=>`${s.name},${v.number},${Object.keys(v.read).filter(r=>v.read[r]).join("|")},${s.status}`).join("\n")).join("\n");
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download","manga_backup.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">📦 Backup CSV</h2>
-      <button className="bg-purple-500 text-white px-4 py-2 rounded" onClick={exportCSV}>Scarica CSV</button>
-    </div>
-  );
-}
-
-// ---------------- RENDER APP ----------------
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+// ------- INIZIALIZZAZIONE -------
+renderMenu();
+renderContent();
 
 </script>
+
 </body>
 </html>
