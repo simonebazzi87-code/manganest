@@ -17,16 +17,16 @@ main{padding:12px}
 .cover-big{width:100px; height:150px; object-fit:cover; border-radius:8px; background:#ccc; border:1px solid #ddd;}
 input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-radius:6px; box-sizing: border-box;}
 .ok{background:var(--main);color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
-.danger{background:#e74c3c;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
 .vol-container { display: flex; flex-direction: column; align-items: center; margin: 4px; }
 .volumeStatic{padding:5px 12px;border-radius:6px;border:1.5px solid #eee;background:#fff;display:inline-block;font-size:14px;font-weight:bold;text-align:center}
 .m-label{font-size:10px; font-weight:bold; margin-top:2px; text-transform:uppercase}
 .section-title{border-left: 4px solid var(--main); padding-left: 10px; margin: 20px 0 10px 0; color: #2d3436}
 .buy-tag{background:#27ae60; color:white; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold; height:fit-content}
 .small{font-size:12px; color:#666}
-.filter-scroll{display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; margin-bottom:15px; scrollbar-width: none;}
-.btn-filter{white-space:nowrap; padding:8px 15px; border-radius:20px; border:1.5px solid #ddd; background:#fff; cursor:pointer; font-size:13px; font-weight:500}
-.btn-filter.active{background:var(--main); color:#fff; border-color:var(--main)}
+.filter-bar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee}
+.filter-bar button{padding:8px 15px; border-radius:6px; border:1px solid #ddd; background:#f9f9f9; cursor:pointer; font-weight:500}
+.filter-bar button.active{background:var(--main); color:#fff; border-color:var(--main)}
+.filter-bar select{width:auto; min-width:140px; margin:0; height:36px; padding:0 10px; font-size:13px}
 </style>
 </head>
 
@@ -55,7 +55,11 @@ const app=document.getElementById("app");
 const menu=document.getElementById("menu");
 const who=document.getElementById("who");
 const switchBtn=document.getElementById("switchUser");
-let currentEdFilter = "ALL";
+
+// Stato filtri Edicola
+let edMode = "ALL"; // ALL o GAPS
+let edSagaFilter = ""; 
+let edSerieFilter = "";
 
 switchBtn.onclick=()=>{db.currentUser=null; save(); render();};
 
@@ -91,57 +95,71 @@ function home(){
   });
 }
 
-/* 1. EDICOLA CON FILTRI A BOTTONE */
+/* EDICOLA */
 function edicolaTab(c){
   const gid = getActiveGroup();
-  const allSeries = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
-  const sagas = db.sagas.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
-  const publishers = [...new Set(allSeries.map(s => s.publisher).filter(p => p))].sort();
+  
+  // Trova solo serie con mancanze o nuove uscite
+  const activeSeries = db.series.filter(sr => {
+      if(sr.groupId !== gid) return false;
+      const groupVols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number);
+      const max = groupVols.length > 0 ? Math.max(...groupVols) : 0;
+      let hasGap = false;
+      for(let i=1; i<max; i++) if(!groupVols.includes(i)) { hasGap = true; break; }
+      const hasNext = (sr.status === "In Corso" || max === 0);
+      return hasGap || hasNext;
+  }).sort((a,b)=>a.name.localeCompare(b.name));
+
+  const activeSagaIds = [...new Set(activeSeries.map(s => s.sagaId))];
+  const activeSagas = db.sagas.filter(sg => activeSagaIds.includes(sg.id)).sort((a,b)=>a.name.localeCompare(b.name));
 
   c.innerHTML = `
     <h2 class="section-title">Edicola</h2>
-    <div class="filter-scroll" id="edFilters">
-        <button class="btn-filter ${currentEdFilter==='ALL'?'active':''}" onclick="setEdFilter('ALL')">Tutto</button>
-        <button class="btn-filter ${currentEdFilter==='GAPS'?'active':''}" onclick="setEdFilter('GAPS')">⚠️ Solo Mancanti</button>
-        ${publishers.map(p => `<button class="btn-filter ${currentEdFilter==='PUB-'+p?'active':''}" onclick="setEdFilter('PUB-${p}')">${p}</button>`).join('')}
-        ${sagas.map(s => `<button class="btn-filter ${currentEdFilter==='SAGA-'+s.id?'active':''}" onclick="setEdFilter('SAGA-${s.id}')">${s.name}</button>`).join('')}
+    <div class="filter-bar">
+        <button class="${edMode==='ALL'?'active':''}" onclick="setEdMode('ALL')">Tutto</button>
+        <button class="${edMode==='GAPS'?'active':''}" onclick="setEdMode('GAPS')">Solo Mancanti</button>
+        <select id="edSagaSelect" onchange="setEdSaga(this.value)">
+            <option value="">Filtra Saga...</option>
+            ${activeSagas.map(s => `<option value="${s.id}" ${edSagaFilter===s.id?'selected':''}>${s.name}</option>`).join('')}
+        </select>
+        <select id="edSerieSelect" onchange="setEdSerie(this.value)">
+            <option value="">Filtra Serie...</option>
+            ${activeSeries.map(s => `<option value="${s.id}" ${edSerieFilter===s.id?'selected':''}>${s.name}</option>`).join('')}
+        </select>
     </div>
     <div id="edicolaList"></div>`;
   renderEdicolaList();
 }
 
-window.setEdFilter = (f) => {
-    currentEdFilter = f;
-    edicolaTab(app);
-}
+window.setEdMode = (m) => { edMode = m; edicolaTab(app); }
+window.setEdSaga = (id) => { edSagaFilter = id; edSerieFilter = ""; edicolaTab(app); }
+window.setEdSerie = (id) => { edSerieFilter = id; edSagaFilter = ""; edicolaTab(app); }
 
 window.renderEdicolaList = () => {
     const gid = getActiveGroup();
     const user = db.users.find(u => u.id === db.currentUser);
     const listDiv = document.getElementById("edicolaList");
     
-    let filteredSeries = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
-
-    if(currentEdFilter.startsWith("SAGA-")) filteredSeries = filteredSeries.filter(s => s.sagaId === currentEdFilter.replace("SAGA-",""));
-    if(currentEdFilter.startsWith("PUB-")) filteredSeries = filteredSeries.filter(s => s.publisher === currentEdFilter.replace("PUB-",""));
+    let series = db.series.filter(s => s.groupId === gid);
+    if(edSagaFilter) series = series.filter(s => s.sagaId === edSagaFilter);
+    if(edSerieFilter) series = series.filter(s => s.id === edSerieFilter);
+    series.sort((a,b)=>a.name.localeCompare(b.name));
 
     let h = ""; let count = 0;
 
-    filteredSeries.forEach(sr => {
-        const saga = db.sagas.find(sg => sg.id === sr.sagaId);
+    series.forEach(sr => {
         const groupVols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number).sort((a,b)=>a-b);
         let gaps = []; let next = null; 
-
-        if(groupVols.length > 0) {
-            const max = Math.max(...groupVols);
-            for(let i=1; i<max; i++) if(!groupVols.includes(i)) gaps.push(i);
-            if(sr.status === "In Corso" && currentEdFilter !== "GAPS") next = max + 1;
-        } else if(currentEdFilter !== "GAPS") {
-            next = 1;
+        const max = groupVols.length > 0 ? Math.max(...groupVols) : 0;
+        
+        for(let i=1; i<max; i++) if(!groupVols.includes(i)) gaps.push(i);
+        if(edMode !== "GAPS") {
+            if(sr.status === "In Corso" || max === 0) next = max + 1;
         }
 
         if(gaps.length > 0 || next) {
             count++;
+            const saga = db.sagas.find(sg => sg.id === sr.sagaId);
             h += `
             <div class="card">
                 <div class="row-edit" style="border:none; padding:0">
@@ -169,10 +187,59 @@ window.renderEdicolaList = () => {
             </div>`;
         }
     });
-    listDiv.innerHTML = count > 0 ? h : `<div class="card">Nessun volume trovato.</div>`;
+    listDiv.innerHTML = count > 0 ? h : `<div class="card" style="text-align:center; color:#666">Nessun volume da acquistare in questa sezione.</div>`;
 }
 
-/* IL RESTO DELLE FUNZIONI RIMANE INVARIATO (MODIFICA, AGGIUNGI, UTENTI) */
+/* LE ALTRE FUNZIONI (DATABASE, LETTURA, ETC) RESTANO INVARIARE COME NEI PRECEDENTI STEP */
+function searchDB(c){
+  const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><select id="searchSaga" onchange="doSearch()"><option value="">Tutto (A-Z)</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="searchRes"></div>`;
+  doSearch();
+}
+window.doSearch=()=>{
+  const sid=document.getElementById("searchSaga").value; const gid=getActiveGroup();
+  let fSagas=sid?db.sagas.filter(s=>s.id===sid):db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById("searchRes").innerHTML=fSagas.map(sg=>{ 
+      const sS=db.series.filter(r=>r.sagaId===sg.id).sort((a,b)=>a.name.localeCompare(b.name)); if(sS.length===0) return "";
+      return `<div class="card"><h3 style="color:var(--main)">${sg.name}</h3>${sS.map(sr=>{ 
+          const aN=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===gid).map(v=>v.number).sort((a,b)=>a-b); 
+          return `<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><b style="font-size:20px">${sr.name}</b><br><span class="small">${sr.authors} | ${sr.publisher} (${sr.status})</span><br><div style="margin-top:10px">${aN.map(n=>`<span class="volumeStatic">${n}</span>`).join('')}</div></div></div>`; 
+      }).join('')}</div>`; 
+  }).join('');
+}
+function readTab(c){
+  const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML=`<h2 class="section-title">Lettura</h2><div class="card"><select id="readSagaSelect" onchange="renderReadList()"><option value="">-- Seleziona Saga (A-Z) --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="readArea"></div>`;
+}
+window.renderReadList=()=>{
+  const sagaId=document.getElementById("readSagaSelect").value; if(!sagaId)return;
+  const user=db.users.find(u=>u.id===db.currentUser); const groupMembers = db.users.filter(u => u.groupId === user.groupId);
+  document.getElementById("readArea").innerHTML=db.series.filter(s=>s.sagaId===sagaId).sort((a,b)=>a.name.localeCompare(b.name)).map(sr=>{
+    const myGroupVols=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===user.groupId).sort((a,b)=>a.number-b.number);
+    return `<div class="card"><div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div style="flex:1"><h3>${sr.name}</h3><p class="small">${sr.authors} | ${sr.publisher}</p><div style="display:flex;flex-wrap:wrap;margin-top:10px">${myGroupVols.map(v=>{
+            const amIRead=db.read.some(r=>r.volId===v.id && r.userId===user.id);
+            const dots = groupMembers.map(m => {
+                const hasRead = db.read.some(r => r.volId === v.id && r.userId === m.id);
+                return hasRead ? `<span class="dot" style="background-color:${m.color}" title="${m.name}"></span>` : '';
+            }).join('');
+            return `<div class="vol-container"><button class="volumeBtn" style="${amIRead?`background:${user.color};color:white;border:none`:''}" onclick="toggleRead('${v.id}')">${v.number}</button><div class="read-indicators">${dots}</div></div>`;
+    }).join('')}</div></div></div></div>`;
+  }).join('');
+}
+window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
+function addVolumes(c){
+  const gid = getActiveGroup();
+  const series = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><select id="vSerie" onchange="showUserVols()"><option value="">-- Seleziona Serie (A-Z) --</option>${series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="seriePreview" style="margin-top:15px"></div><div id="vInputArea" style="display:none"><div class="row-edit" style="border:none; padding:0"><input type="number" id="vStart" placeholder="Dal n."><input type="number" id="vEnd" placeholder="Al n."></div><button class="ok" style="width:100%; margin-top:10px" onclick="saveVols()">Aggiungi</button></div><div id="warningArea" class="warning"></div></div><div id="vList"></div>`;
+}
+function showUserVols(){
+  const sid=document.getElementById("vSerie").value; if(!sid)return; const sr=db.series.find(x=>x.id===sid);
+  document.getElementById("vInputArea").style.display="block";
+  document.getElementById("seriePreview").innerHTML=`<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><h3>${sr.name}</h3><p class="small">${sr.authors}</p></div></div>`;
+  const groupVols=db.volumes.filter(v=>v.seriesId===sid && v.groupId===getActiveGroup()).sort((a,b)=>a.number-b.number);
+  document.getElementById("vList").innerHTML=`<div class="card"><h4>Collezione Gruppo:</h4><div style="display:flex;flex-wrap:wrap">${groupVols.map(v=>`<button class="volumeBtn" style="margin:2px" onclick="removeVol('${v.id}')">${v.number}</button>`).join('')}</div></div>`;
+}
+window.removeVol=(id)=>{ db.volumes=db.volumes.filter(v=>v.id!==id); db.read=db.read.filter(r=>r.volId!==id); save(); showUserVols(); }
 function addSeries(c){
   const gid = getActiveGroup();
   const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
@@ -197,11 +264,6 @@ window.renderEditArea=()=>{
         h+=`<div class="card"><div class="row-edit"><img src="${sr.img}" class="cover-big"><div style="flex:1"><input id="t-${sr.id}" value="${sr.name}"><input id="a-${sr.id}" value="${sr.authors}" class="small"><input id="e-${sr.id}" value="${sr.publisher}" class="small"><select id="st-${sr.id}"><option value="In Corso" ${sr.status==='In Corso'?'selected':''}>In Corso</option><option value="Terminata" ${sr.status==='Terminata'?'selected':''}>Terminata</option><option value="Interrotta" ${sr.status==='Interrotta'?'selected':''}>Interrotta</option></select><label class="small">Sposta Saga:</label><select id="m-${sr.id}">${allSagas.map(s=>`<option value="${s.id}" ${s.id===sagaId?'selected':''}>${s.name}</option>`).join('')}</select><div style="margin-top:10px"><button class="ok" onclick="updateFullSerie('${sr.id}')">Salva</button> <button class="danger" onclick="deleteSerie('${sr.id}')">Elimina</button></div></div></div></div>`;
     }); area.innerHTML=h;
 }
-function addVolumes(c){
-  const gid = getActiveGroup();
-  const series = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><select id="vSerie" onchange="showUserVols()"><option value="">-- Seleziona Serie (A-Z) --</option>${series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="seriePreview" style="margin-top:15px"></div><div id="vInputArea" style="display:none"><div class="row-edit" style="border:none; padding:0"><input type="number" id="vStart" placeholder="Dal n."><input type="number" id="vEnd" placeholder="Al n."></div><button class="ok" style="width:100%; margin-top:10px" onclick="saveVols()">Aggiungi</button></div><div id="warningArea" class="warning"></div></div><div id="vList"></div>`;
-}
 function users(c){
   c.innerHTML = "<h2 class='section-title'>Gruppi Famiglia</h2><div class='card'><h3>Nuovo Gruppo</h3><input id='newGroupName' placeholder='Nome Gruppo'><button class='ok' onclick='addGroup()'>Crea</button></div>";
   db.groups.forEach(g => { c.innerHTML += `<div class="card" style="display:flex; gap:10px"><input value="${g.name}" onchange="updateGroupName('${g.id}',this.value)" style="flex:1">${g.id!=='default'?`<button class="danger" onclick="deleteGroup('${g.id}')">X</button>`:''}</div>`; });
@@ -222,53 +284,7 @@ window.saveVols=()=>{
   const sid=document.getElementById("vSerie").value, start=Number(document.getElementById("vStart").value), end=Number(document.getElementById("vEnd").value)||start;
   const gid=getActiveGroup(); let doppi=[]; 
   for(let i=start;i<=end;i++){ if(db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) doppi.push(i); else db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, userId:db.currentUser, groupId:gid}); }
-  document.getElementById("warningArea").innerHTML=doppi.length>0?"⚠️ Saltati: "+doppi.join(", "):"";
   save(); showUserVols();
-}
-function showUserVols(){
-  const sid=document.getElementById("vSerie").value; if(!sid)return; const sr=db.series.find(x=>x.id===sid);
-  document.getElementById("vInputArea").style.display="block";
-  document.getElementById("seriePreview").innerHTML=`<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><h3>${sr.name}</h3><p class="small">${sr.authors}</p></div></div>`;
-  const groupVols=db.volumes.filter(v=>v.seriesId===sid && v.groupId===getActiveGroup()).sort((a,b)=>a.number-b.number);
-  document.getElementById("vList").innerHTML=`<div class="card"><h4>Collezione Gruppo:</h4><div style="display:flex;flex-wrap:wrap">${groupVols.map(v=>`<button class="volumeBtn" onclick="removeVol('${v.id}')">${v.number}</button>`).join('')}</div></div>`;
-}
-window.removeVol=(id)=>{ db.volumes=db.volumes.filter(v=>v.id!==id); db.read=db.read.filter(r=>r.volId!==id); save(); showUserVols(); }
-
-function readTab(c){
-  const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML=`<h2 class="section-title">Lettura</h2><div class="card"><select id="readSagaSelect" onchange="renderReadList()"><option value="">-- Seleziona Saga (A-Z) --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="readArea"></div>`;
-}
-window.renderReadList=()=>{
-  const sagaId=document.getElementById("readSagaSelect").value; if(!sagaId)return;
-  const user=db.users.find(u=>u.id===db.currentUser); const groupMembers = db.users.filter(u => u.groupId === user.groupId);
-  document.getElementById("readArea").innerHTML=db.series.filter(s=>s.sagaId===sagaId).sort((a,b)=>a.name.localeCompare(b.name)).map(sr=>{
-    const myGroupVols=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===user.groupId).sort((a,b)=>a.number-b.number);
-    return `<div class="card"><div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div style="flex:1"><h3>${sr.name}</h3><p class="small">${sr.authors} | ${sr.publisher}</p><div style="display:flex;flex-wrap:wrap;margin-top:10px">${myGroupVols.map(v=>{
-            const amIRead=db.read.some(r=>r.volId===v.id && r.userId===user.id);
-            const dots = groupMembers.map(m => {
-                const hasRead = db.read.some(r => r.volId === v.id && r.userId === m.id);
-                return hasRead ? `<span class="dot" style="background-color:${m.color}" title="${m.name}"></span>` : '';
-            }).join('');
-            return `<div class="vol-container"><button class="volumeBtn" style="${amIRead?`background:${user.color};color:white;border:none`:''}" onclick="toggleRead('${v.id}')">${v.number}</button><div class="read-indicators">${dots}</div></div>`;
-    }).join('')}</div></div></div></div>`;
-  }).join('');
-}
-window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
-function searchDB(c){
-  const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><select id="searchSaga" onchange="doSearch()"><option value="">Tutto (A-Z)</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="searchRes"></div>`;
-  doSearch();
-}
-window.doSearch=()=>{
-  const sid=document.getElementById("searchSaga").value; const gid=getActiveGroup();
-  let fSagas=sid?db.sagas.filter(s=>s.id===sid):db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
-  document.getElementById("searchRes").innerHTML=fSagas.map(sg=>{ 
-      const sS=db.series.filter(r=>r.sagaId===sg.id).sort((a,b)=>a.name.localeCompare(b.name)); if(sS.length===0) return "";
-      return `<div class="card"><h3 style="color:var(--main)">${sg.name}</h3>${sS.map(sr=>{ 
-          const aN=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===gid).map(v=>v.number).sort((a,b)=>a-b); 
-          return `<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><b style="font-size:20px">${sr.name}</b><br><span class="small">${sr.authors} | ${sr.publisher} (${sr.status})</span><br><div style="margin-top:10px">${aN.map(n=>`<span class="volumeStatic">${n}</span>`).join('')}</div></div></div>`; 
-      }).join('')}</div>`; 
-  }).join('');
 }
 
 render();
