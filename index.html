@@ -14,10 +14,10 @@ main{padding:12px;}
 .card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;}
 .row{display:flex;gap:10px;align-items:center;margin:6px 0;}
 .cover{width:50px;height:70px;object-fit:cover;border-radius:4px;background:#ccc;}
-.volumes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.volumes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 .volume{padding:6px 10px;border-radius:6px;background:#eee;}
-.ok{background:var(--main);color:#fff;}
 select,input{width:100%;padding:6px;margin:6px 0;}
+.ok{background:var(--main);color:#fff;}
 </style>
 </head>
 <body>
@@ -35,7 +35,7 @@ select,input{width:100%;padding:6px;margin:6px 0;}
 
 <script>
 let db = JSON.parse(localStorage.getItem("manganest")) || {
-  users: [
+  users:[
     {id:"simone",name:"Simone",color:"#6c5ce7"},
     {id:"andrea",name:"Andrea",color:"#e84393"}
   ],
@@ -108,7 +108,7 @@ function users(c){
         <input type="color" value="${u.color}">
         <button class="ok">Salva</button>
       `;
-      d.querySelector(".ok").onclick=()=>{
+      d.querySelector("button").onclick=()=>{
         u.name=d.querySelector("input").value.trim();
         u.color=d.querySelector("input[type=color]").value;
         save(); render();
@@ -191,7 +191,7 @@ function addVolumes(c){
   c.appendChild(box);
 }
 
-/* ------------------ LETTURA (STEP 1) ------------------ */
+/* ------------------ LETTURA – STEP 1 ------------------ */
 function reading(c){
   c.innerHTML="<h2>Lettura</h2>";
 
@@ -218,31 +218,46 @@ function reading(c){
   const result=box.querySelector("#result");
 
   function refreshSeries(){
-    const sid=sagaSel.value;
+    const sagaId=sagaSel.value;
     let list=db.series;
-    if(sid) list=list.filter(s=>s.sagaId===sid);
-    seriesSel.innerHTML="<option value=''>-- Seleziona serie --</option>"+
-      list.slice().sort((a,b)=>a.name.localeCompare(b.name))
-        .map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+    if(sagaId) list=list.filter(s=>s.sagaId===sagaId);
+
+    seriesSel.innerHTML =
+      `<option value="">-- Seleziona serie --</option>` +
+      list.slice()
+          .sort((a,b)=>a.name.localeCompare(b.name))
+          .map(s=>`<option value="${s.id}">${s.name}</option>`)
+          .join("");
+
     result.innerHTML="";
   }
 
   function showVolumes(){
     result.innerHTML="";
-    const sid=seriesSel.value;
-    if(!sid) return;
+    const seriesId=seriesSel.value;
+    if(!seriesId) return;
+
+    const serie=db.series.find(s=>s.id===seriesId);
+    const saga=db.sagas.find(s=>s.id===serie.sagaId);
+
+    const title=document.createElement("h3");
+    title.textContent=`${saga?.name || ""} – ${serie.name}`;
+    result.appendChild(title);
+
     const vols=db.volumes
-      .filter(v=>v.series===sid)
+      .filter(v=>v.series===seriesId)
       .sort((a,b)=>a.number-b.number);
-    const div=document.createElement("div");
-    div.className="volumes";
+
+    const vbox=document.createElement("div");
+    vbox.className="volumes";
     vols.forEach(v=>{
-      const b=document.createElement("div");
-      b.className="volume";
-      b.textContent=v.number;
-      div.appendChild(b);
+      const d=document.createElement("div");
+      d.className="volume";
+      d.textContent=v.number;
+      vbox.appendChild(d);
     });
-    result.appendChild(div);
+
+    result.appendChild(vbox);
   }
 
   sagaSel.onchange=refreshSeries;
