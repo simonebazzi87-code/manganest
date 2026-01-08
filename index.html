@@ -6,28 +6,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--main:#6c5ce7;--bg:#f5f6fa;}
-body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);}
-header{background:var(--main);color:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;}
+body{margin:0;font-family:system-ui, sans-serif;background:var(--bg);}
+header{background:var(--main);color:#fff;padding:12px;text-align:center;display:flex;justify-content:space-between;align-items:center;}
 nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;}
-nav button{height:42px;border:none;border-radius:6px;padding:0 16px;cursor:pointer;}
+nav button{border:none;padding:12px 16px;border-radius:6px;cursor:pointer;height:40px;}
 main{padding:12px;}
 .card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;}
-.row{display:flex;gap:10px;align-items:center;margin:6px 0;}
-.cover{width:50px;height:70px;object-fit:cover;border-radius:4px;background:#ccc;}
-.volumes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-.volume{padding:6px 10px;border-radius:6px;background:#eee;}
-select,input{width:100%;padding:6px;margin:6px 0;}
+.row{display:flex;gap:10px;align-items:center;margin-top:8px;}
+.cover{width:60px;height:80px;object-fit:cover;border-radius:4px;background:#ccc;}
+.small{font-size:12px;color:#555;}
 .ok{background:var(--main);color:#fff;}
+.danger{background:#e74c3c;color:#fff;}
+input,select{width:100%;padding:6px;margin:4px 0;}
+button{cursor:pointer;}
+.volRecap{margin-top:8px;padding:8px;background:#eee;border-radius:4px;}
+.volRecap div{margin-bottom:4px;}
+.highlight{background:yellow;padding:2px 4px;border-radius:3px;}
 </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1 style="margin:0">MangaNest</h1>
-    <div id="who"></div>
-  </div>
-  <button id="switchUser" style="display:none">Cambia utente</button>
+  <div><h1>MangaNest</h1><div id="who"></div></div>
+  <button id="switchUser" style="display:none;">Cambia utente</button>
 </header>
 
 <nav id="menu"></nav>
@@ -42,7 +43,7 @@ let db = JSON.parse(localStorage.getItem("manganest")) || {
   currentUser:null,
   sagas:[],
   series:[],
-  volumes:[]
+  volumes:[],
 };
 
 function save(){ localStorage.setItem("manganest",JSON.stringify(db)); }
@@ -55,10 +56,9 @@ const switchBtn=document.getElementById("switchUser");
 switchBtn.onclick=()=>{ db.currentUser=null; render(); };
 
 function render(){
-  const user=db.users.find(u=>u.id===db.currentUser);
-  document.documentElement.style.setProperty("--main", user?.color || "#6c5ce7");
-  who.textContent=user ? "Utente: "+user.name : "";
-  switchBtn.style.display=user?"inline-block":"none";
+  document.documentElement.style.setProperty("--main", db.users.find(u=>u.id===db.currentUser)?.color || "#6c5ce7");
+  who.textContent=db.currentUser ? "Utente: "+db.users.find(u=>u.id===db.currentUser).name : "";
+  switchBtn.style.display=db.currentUser?"inline-block":"none";
 
   menu.innerHTML="";
   if(!db.currentUser){ home(); return; }
@@ -66,13 +66,9 @@ function render(){
   [
     ["Database",database],
     ["Aggiungi numeri",addVolumes],
-    ["Utenti",users],
-    ["Lettura",reading]
+    ["Utenti",users]
   ].forEach(([t,f])=>{
-    const b=document.createElement("button");
-    b.textContent=t;
-    b.onclick=()=>f(app);
-    menu.appendChild(b);
+    const b=document.createElement("button"); b.textContent=t; b.onclick=()=>f(app); menu.appendChild(b);
   });
 
   database(app);
@@ -80,116 +76,171 @@ function render(){
 
 function home(){
   app.innerHTML="<h2>Scegli utente</h2>";
-  db.users
-    .slice()
-    .sort((a,b)=>a.name.localeCompare(b.name))
-    .forEach(u=>{
-      const b=document.createElement("button");
-      b.textContent=u.name;
-      b.style.background=u.color;
-      b.style.color="#fff";
-      b.style.margin="6px";
-      b.onclick=()=>{ db.currentUser=u.id; save(); render(); };
-      app.appendChild(b);
-    });
+  db.users.forEach(u=>{
+    const b=document.createElement("button");
+    b.textContent=u.name;
+    b.style.background=u.color;
+    b.style.color="#fff";
+    b.onclick=()=>{ db.currentUser=u.id; save(); render(); };
+    app.appendChild(b);
+  });
 }
 
-/* ------------------ UTENTI ------------------ */
 function users(c){
   c.innerHTML="<h2>Utenti</h2>";
-  db.users
-    .slice()
-    .sort((a,b)=>a.name.localeCompare(b.name))
-    .forEach(u=>{
-      const d=document.createElement("div");
-      d.className="card";
-      d.innerHTML=`
-        <input value="${u.name}">
-        <input type="color" value="${u.color}">
-        <button class="ok">Salva</button>
-      `;
-      d.querySelector("button").onclick=()=>{
-        u.name=d.querySelector("input").value.trim();
-        u.color=d.querySelector("input[type=color]").value;
-        save(); render();
-      };
-      c.appendChild(d);
-    });
+  db.users.forEach(u=>{
+    const d=document.createElement("div");
+    d.className="card";
+    d.innerHTML=`
+      <input type="text" value="${u.name}" style="width:60%">
+      <input type="color" value="${u.color}" style="width:20%">
+      <button class="ok">Salva</button>
+      <button class="danger">Elimina</button>
+    `;
+    d.querySelector(".ok").onclick=()=>{
+      u.name=d.querySelector("input[type=text]").value.trim();
+      u.color=d.querySelector("input[type=color]").value;
+      save(); render();
+    };
+    d.querySelector(".danger").onclick=()=>{
+      if(confirm("Eliminare utente?")){ db.users=db.users.filter(x=>x.id!==u.id); save(); render(); }
+    };
+    c.appendChild(d);
+  });
+  const d=document.createElement("div");
+  d.className="card";
+  d.innerHTML=`<input id="n" placeholder="Nome"><input id="c" type="color"><button class="ok">Aggiungi</button>`;
+  d.querySelector("button").onclick=()=>{
+    const n=d.querySelector("#n").value.trim();
+    if(!n) return;
+    db.users.push({id:crypto.randomUUID(),name:n,color:d.querySelector("#c").value});
+    save(); render();
+  };
+  c.appendChild(d);
 }
 
 /* ------------------ DATABASE ------------------ */
 function database(c){
   c.innerHTML="<h2>Database</h2>";
 
-  const sagaBox=document.createElement("div");
-  sagaBox.className="card";
-  sagaBox.innerHTML=`
-    <h3>Nuova saga</h3>
-    <input id="newSaga">
-    <button class="ok">Aggiungi</button>
-  `;
-  sagaBox.querySelector("button").onclick=()=>{
-    const n=sagaBox.querySelector("input").value.trim();
-    if(n && !db.sagas.find(s=>s.name===n)){
-      db.sagas.push({id:crypto.randomUUID(),name:n});
-      save(); render();
-    }
-  };
-  c.appendChild(sagaBox);
+  // NUOVA SAGA
+  const s=document.createElement("div"); s.className="card";
+  s.innerHTML="<h3>Nuova saga</h3><input id='ns'><button class='ok'>Aggiungi</button>";
+  s.querySelector("button").onclick=()=>{ const v=s.querySelector("#ns").value.trim(); if(v && !db.sagas.find(x=>x.name===v)){ db.sagas.push({id:crypto.randomUUID(),name:v}); save(); render(); } };
+  c.appendChild(s);
 
-  const seriesBox=document.createElement("div");
-  seriesBox.className="card";
-  seriesBox.innerHTML=`
+  // NUOVA SERIE
+  const d=document.createElement("div"); d.className="card";
+  d.innerHTML=`
     <h3>Nuova serie</h3>
-    <input id="sn" placeholder="Nome serie">
-    <select id="ss">
-      <option value="">Nessuna saga</option>
-      ${db.sagas.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
-    </select>
+    <input id="n" placeholder="Nome">
+    <select id="sg"><option value="">Nessuna saga</option>${db.sagas.map(x=>`<option value="${x.id}">${x.name}</option>`)}</select>
+    <select id="st"><option>in corso</option><option>finita</option><option>interrotta</option></select>
+    <input id="au" placeholder="Autori (,)">
+    <input id="ed" placeholder="Editore">
+    <input id="im" placeholder="URL immagine">
     <button class="ok">Aggiungi</button>
   `;
-  seriesBox.querySelector("button").onclick=()=>{
-    const name=seriesBox.querySelector("#sn").value.trim();
-    if(!name) return;
-    let sagaId=seriesBox.querySelector("#ss").value;
-    if(!sagaId){
-      const sg={id:crypto.randomUUID(),name};
-      db.sagas.push(sg);
-      sagaId=sg.id;
-    }
-    db.series.push({id:crypto.randomUUID(),name,sagaId});
+  d.querySelector("button").onclick=()=>{
+    const name=d.querySelector("#n").value.trim(); if(!name) return;
+    let sagaId=d.querySelector("#sg").value;
+    if(!sagaId){ const sg={id:crypto.randomUUID(),name}; db.sagas.push(sg); sagaId=sg.id; }
+    db.series.push({id:crypto.randomUUID(),name,sagaId,status:d.querySelector("#st").value,authors:d.querySelector("#au").value.split(",").map(x=>x.trim()).filter(Boolean),publisher:d.querySelector("#ed").value,img:d.querySelector("#im").value});
     save(); render();
   };
-  c.appendChild(seriesBox);
+  c.appendChild(d);
+
+  // RECAP SAGHE E SERIE
+  db.sagas.sort((a,b)=>a.name.localeCompare(b.name)).forEach(g=>{
+    const box=document.createElement("div"); box.className="card";
+    box.innerHTML=`<h3>${g.name}</h3><button class="ok">✏️ Modifica saga</button><button class="danger">Elimina saga</button>`;
+    box.querySelector(".ok").onclick=()=>{ const n=prompt("Nuovo nome saga",g.name); if(n){ g.name=n; save(); render(); } };
+    box.querySelector(".danger").onclick=()=>{ if(confirm("Eliminare la saga? Le serie resteranno senza saga.")){ db.series.forEach(s=>{ if(s.sagaId===g.id) s.sagaId=null; }); db.sagas=db.sagas.filter(x=>x.id!==g.id); save(); render(); } };
+    
+    db.series.filter(s=>s.sagaId===g.id).sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr=>{
+      const r=document.createElement("div"); r.className="row";
+      r.innerHTML=`
+        <img class="cover" src="${sr.img||'https://via.placeholder.com/60x80'}">
+        <div><b>${sr.name}</b><br><span class="small">${sr.status} – ${sr.publisher}</span><br><span class="small">${sr.authors.join(", ")}</span></div>
+        <button class="ok">Sposta</button>
+        <button class="ok">✏️ Modifica</button>
+        <button class="danger">Elimina</button>
+      `;
+      r.querySelector(".row button.ok").onclick=()=>{ // SPOSTA
+        const other=db.sagas.filter(x=>x.id!==g.id); 
+        const options=other.map(x=>x.name); options.push("Crea nuova saga omonima");
+        let sel=prompt("Scegli saga: "+options.join(", "),options[0]);
+        if(sel==="Crea nuova saga omonima"){ const ng={id:crypto.randomUUID(),name:sr.name}; db.sagas.push(ng); sr.sagaId=ng.id; }
+        else{ const found=other.find(x=>x.name===sel); if(found) sr.sagaId=found.id; }
+        save(); render();
+      };
+      r.querySelectorAll(".ok")[1].onclick=()=>{ // MODIFICA SERIE
+        const n=prompt("Nuovo titolo serie",sr.name); if(n) sr.name=n;
+        const a=prompt("Autori (,) separati",sr.authors.join(",")); if(a!==null) sr.authors=a.split(",").map(x=>x.trim()).filter(Boolean);
+        const s=prompt("Stato serie (in corso/finita/interrotta)",sr.status); if(s) sr.status=s;
+        const e=prompt("Casa editrice",sr.publisher); if(e!==null) sr.publisher=e;
+        save(); render();
+      };
+      r.querySelector(".danger").onclick=()=>{ if(confirm("Eliminare la serie?")){ db.volumes=db.volumes.filter(v=>v.series!==sr.id); db.series=db.series.filter(x=>x.id!==sr.id); save(); render(); } };
+      box.appendChild(r);
+    });
+    c.appendChild(box);
+  });
 }
 
 /* ------------------ AGGIUNGI VOLUMI ------------------ */
 function addVolumes(c){
-  c.innerHTML="<h2>Aggiungi numeri</h2>";
-  if(!db.series.length){ c.innerHTML+="<p>Nessuna serie</p>"; return; }
+  c.innerHTML="<h2>Aggiungi numeri / volumi</h2>";
+  if(db.series.length===0){ c.innerHTML+="<p>Nessuna serie nel database</p>"; return; }
 
-  const box=document.createElement("div");
-  box.className="card";
-  box.innerHTML=`
-    <select id="s">
-      ${db.series.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
-    </select>
-    <input id="from" type="number" placeholder="Dal numero">
-    <input id="to" type="number" placeholder="Al numero">
-    <button class="ok">Aggiungi</button>
+  const s=document.createElement("div"); s.className="card";
+  s.innerHTML=`
+    <label>Seleziona serie</label>
+    <select id="selSeries">${db.series.map(x=>`<option value="${x.id}">${x.name}</option>`)}</select>
+    <input id="numStart" type="number" placeholder="Dal numero">
+    <input id="numEnd" type="number" placeholder="Al numero (facoltativo)">
+    <button class="ok">Aggiungi volumi</button>
+    <div id="addedVolumes" class="volRecap"></div>
+    <h4>Vedi tutti i volumi di una serie</h4>
+    <select id="viewSeries"><option value="">--Scegli serie--</option>${db.series.map(x=>`<option value="${x.id}">${x.name}</option>`)}</select>
+    <div id="allVolumes" class="volRecap"></div>
   `;
-  box.querySelector("button").onclick=()=>{
-    const sid=box.querySelector("#s").value;
-    let a=+box.querySelector("#from").value;
-    let b=+box.querySelector("#to").value || a;
-    for(let i=a;i<=b;i++){
-      if(!db.volumes.find(v=>v.series===sid && v.number===i))
-        db.volumes.push({series:sid,number:i});
+  c.appendChild(s);
+
+  const addedDiv=document.getElementById("addedVolumes");
+  const allDiv=document.getElementById("allVolumes");
+
+  function renderVolumes(seriesId){
+    const sr=db.series.find(x=>x.id===seriesId);
+    if(!sr){ addedDiv.innerHTML=""; return; }
+    const vols=db.volumes.filter(v=>v.series===seriesId).sort((a,b)=>a.number-b.number);
+    addedDiv.innerHTML="";
+    const row=document.createElement("div");
+    row.innerHTML=`<img class="cover" src="${sr.img||'https://via.placeholder.com/60x80'}"> <b>${sr.name}</b> `;
+    vols.forEach(v=>{
+      const b=document.createElement("button");
+      b.textContent=v.number;
+      b.onclick=()=>{ if(confirm(`Eliminare volume ${v.number}?`)){ db.volumes=db.volumes.filter(x=>x!==v); save(); renderVolumes(seriesId); } };
+      row.appendChild(b);
+    });
+    addedDiv.appendChild(row);
+  }
+
+  s.querySelector("button").onclick=()=>{
+    const seriesId=document.getElementById("selSeries").value;
+    let start=Number(document.getElementById("numStart").value);
+    let end=document.getElementById("numEnd").value?Number(document.getElementById("numEnd").value):start;
+    if(!seriesId||!start) return alert("Serie e numero obbligatori");
+    for(let i=start;i<=end;i++){
+      if(db.volumes.find(v=>v.series===seriesId && v.number===i)){ alert(`Volume ${i} già presente!`); continue; }
+      db.volumes.push({series:seriesId,number:i});
     }
-    save(); alert("Volumi aggiunti");
+    save();
+    renderVolumes(seriesId);
   };
-  c.appendChild(box);
-}
+
+
+
 
 /* ------------------ LETTURA – STEP 1 ------------------ */
 function reading(c){
@@ -257,16 +308,40 @@ function reading(c){
       vbox.appendChild(d);
     });
 
-    result.appendChild(vbox);
-  }
 
-  sagaSel.onchange=refreshSeries;
-  seriesSel.onchange=showVolumes;
 
-  refreshSeries();
+
+
+
+
+
+
+
+
+
+
+  document.getElementById("selSeries").onchange=()=>renderVolumes(document.getElementById("selSeries").value);
+
+  document.getElementById("viewSeries").onchange=()=>{
+    const seriesId=document.getElementById("viewSeries").value;
+    if(!seriesId){ allDiv.innerHTML=""; return; }
+    const sr=db.series.find(x=>x.id===seriesId);
+    const vols=db.volumes.filter(v=>v.series===seriesId).sort((a,b)=>a.number-b.number);
+    allDiv.innerHTML="";
+    const row=document.createElement("div");
+    row.innerHTML=`<img class="cover" src="${sr.img||'https://via.placeholder.com/60x80'}"> <b>${sr.name}</b> `;
+    vols.forEach(v=>{
+      const b=document.createElement("button");
+      b.textContent=v.number;
+      b.onclick=()=>{ if(confirm(`Eliminare volume ${v.number}?`)){ db.volumes=db.volumes.filter(x=>x!==v); save(); document.getElementById("viewSeries").onchange(); } };
+      row.appendChild(b);
+    });
+    allDiv.appendChild(row);
+  };
 }
 
 render();
 </script>
+
 </body>
 </html>
