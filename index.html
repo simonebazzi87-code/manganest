@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>MangaNest - Simone & Andrea Ultimate</title>
+<title>MangaNest Ultimate - Simone & Andrea</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--main:#6c5ce7;}
@@ -14,23 +14,23 @@ nav button.active{background:var(--main);color:#fff}
 main{padding:12px; padding-bottom:100px}
 .card{background:#fff;border-radius:8px;padding:15px;margin-bottom:12px;border:1px solid #eee;box-shadow: 0 2px 4px rgba(0,0,0,0.05)}
 .row-edit{display:flex;gap:15px;align-items:flex-start;padding:10px;border-bottom:1px solid #eee; flex-wrap: wrap;}
-.cover-big{width:100px; height:150px; object-fit:cover; border-radius:8px; background:#ccc; border:1px solid #ddd;}
+.cover-big{width:120px; height:180px; object-fit:cover; border-radius:8px; background:#ccc; border:1px solid #ddd;}
 input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-radius:6px; box-sizing: border-box;}
 .ok{background:var(--main);color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
 .danger{background:#e74c3c;color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
 .vol-container { display: flex; flex-direction: column; align-items: center; margin: 4px; }
-.volumeStatic{padding:5px 12px;border-radius:6px;border:1.5px solid #eee;background:#fff;display:inline-block;font-size:14px;font-weight:bold;text-align:center}
+.volumeStatic{padding:5px 12px;border-radius:6px;border:1.5px solid #eee;background:#fff;display:inline-block;font-size:14px;font-weight:bold}
 .volumeBtn{padding:8px 12px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9;cursor:pointer;font-weight:bold}
 .m-label{font-size:10px; font-weight:bold; margin-top:2px; text-transform:uppercase}
 .read-indicators { display: flex; gap: 3px; height: 8px; margin-top: 4px; justify-content: center; min-height:8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,0.1); }
 .section-title{border-left: 4px solid var(--main); padding-left: 10px; margin: 20px 0 10px 0; color: #2d3436}
 .buy-tag{background:#27ae60; color:white; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold; height:fit-content}
+.error-msg{color: #e74c3c; font-size: 13px; font-weight: bold; margin: 10px 0; padding: 10px; background: #fdf0ef; border-radius: 6px; display:none}
 .small{font-size:12px; color:#666}
 .filter-bar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee}
 .filter-bar button{padding:8px 15px; border-radius:6px; border:1px solid #ddd; background:#f9f9f9; cursor:pointer; font-weight:500}
 .filter-bar button.active{background:var(--main); color:#fff; border-color:var(--main)}
-.filter-bar select{width:auto; min-width:140px; margin:0; height:36px; padding:0 10px; font-size:13px}
 </style>
 </head>
 
@@ -45,13 +45,9 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 <script>
 /* ================= DATABASE ================= */
 let db = JSON.parse(localStorage.getItem("manganest_v5")) || {
-  users: [
-    {id: "u1", name: "Simone", color: "#0984e3", groupId: "default"},
-    {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}
-  ],
+  users: [{id: "u1", name: "Simone", color: "#0984e3", groupId: "default"}, {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}],
   groups: [{id: "default", name: "Casa"}],
-  currentUser: null,
-  sagas: [], series: [], volumes: [], read: []
+  currentUser: null, sagas: [], series: [], volumes: [], read: []
 };
 
 const save=()=>localStorage.setItem("manganest_v5",JSON.stringify(db));
@@ -62,13 +58,10 @@ const switchBtn=document.getElementById("switchUser");
 
 let edMode = "ALL"; 
 let edSagaFilter = ""; 
+let edSearchText = "";
 
 switchBtn.onclick=()=>{db.currentUser=null; save(); render();};
-
-function getActiveGroup() {
-    const u = db.users.find(u => u.id === db.currentUser);
-    return u ? u.groupId : "default";
-}
+function getActiveGroup() { const u = db.users.find(u => u.id === db.currentUser); return u ? u.groupId : "default"; }
 
 function render(){
   const u = db.users.find(u => u.id === db.currentUser);
@@ -79,10 +72,8 @@ function render(){
   switchBtn.style.display = u ? "inline" : "none";
   menu.innerHTML = "";
   if(!db.currentUser){home(); return;}
-  
   [["Database",searchDB],["Edicola",edicolaTab],["Lettura",readTab],["Aggiungi numeri",addVolumes],["Aggiungi serie",addSeries],["Utenti",users],["Backup",backupMenu]].forEach(([t,f])=>{
-    const b = document.createElement("button");
-    b.textContent = t; b.onclick = () => f(app); menu.appendChild(b);
+    const b = document.createElement("button"); b.textContent = t; b.onclick = () => f(app); menu.appendChild(b);
   });
   searchDB(app);
 }
@@ -90,8 +81,7 @@ function render(){
 function home(){
   app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>Chi sei?</h3><div id='userList' style='display:flex; justify-content:center; flex-wrap:wrap; gap:10px'></div>";
   db.users.forEach(u=>{
-    const b = document.createElement("button");
-    b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px 30px";
+    const b = document.createElement("button"); b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px 30px";
     b.onclick = () => { db.currentUser = u.id; save(); render(); };
     document.getElementById('userList').appendChild(b);
   });
@@ -100,7 +90,7 @@ function home(){
 /* ================= CATALOGO & EDICOLA ================= */
 function searchDB(c){
   const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><select id="searchSaga" onchange="doSearch()"><option value="">Tutto (A-Z)</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="searchRes"></div>`;
+  c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><select id="searchSaga" onchange="doSearch()"><option value="">Tutte le Saghe</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="searchRes"></div>`;
   doSearch();
 }
 window.doSearch=()=>{
@@ -108,68 +98,52 @@ window.doSearch=()=>{
   let fSagas=sid?db.sagas.filter(s=>s.id===sid):db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
   document.getElementById("searchRes").innerHTML=fSagas.map(sg=>{ 
       const sS=db.series.filter(r=>r.sagaId===sg.id).sort((a,b)=>a.name.localeCompare(b.name)); if(sS.length===0) return "";
-      return `<div class="card"><h3 style="color:var(--main)">${sg.name}</h3>${sS.map(sr=>{ 
+      return `<div class="card"><h3 style="color:var(--main); border-bottom:1px solid #eee">${sg.name}</h3>${sS.map(sr=>{ 
           const aN=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===gid).map(v=>v.number).sort((a,b)=>a-b); 
-          return `<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><b style="font-size:20px">${sr.name}</b><br><span class="small">${sr.authors} | ${sr.publisher} (${sr.status})</span><br><div style="margin-top:10px">${aN.map(n=>`<span class="volumeStatic">${n}</span>`).join('')}</div></div></div>`; 
+          return `<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><b style="font-size:22px">${sr.name}</b><br><span class="small">${sr.authors} | ${sr.publisher} (${sr.status})</span><br><div style="margin-top:10px">${aN.map(n=>`<span class="volumeStatic" style="margin:2px">${n}</span>`).join('')}</div></div></div>`; 
       }).join('')}</div>`; 
   }).join('');
 }
 
 function edicolaTab(c){
   const gid = getActiveGroup();
-  const activeSeries = db.series.filter(sr => sr.groupId === gid);
-  const activeSagaIds = [...new Set(activeSeries.map(s => s.sagaId))];
-  const activeSagas = db.sagas.filter(sg => activeSagaIds.includes(sg.id)).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML = `
-    <h2 class="section-title">Edicola</h2>
-    <div class="filter-bar">
-        <button class="${edMode==='ALL'?'active':''}" onclick="setEdMode('ALL')">Tutto</button>
-        <button class="${edMode==='GAPS'?'active':''}" onclick="setEdMode('GAPS')">Solo Mancanti</button>
-        <select id="edSagaSelect" onchange="setEdSaga(this.value)">
-            <option value="">Filtra Saga...</option>
-            ${activeSagas.map(s => `<option value="${s.id}" ${edSagaFilter===s.id?'selected':''}>${s.name}</option>`).join('')}
-        </select>
-    </div>
-    <div id="edicolaList"></div>`;
+  const activeSagas = db.sagas.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML = `<h2 class="section-title">Edicola</h2><div class="filter-bar"><button class="${edMode==='ALL'?'active':''}" onclick="setEdMode('ALL')">Tutto</button><button class="${edMode==='GAPS'?'active':''}" onclick="setEdMode('GAPS')">Solo Mancanti</button><select id="edSagaSelect" onchange="setEdSaga(this.value)"><option value="">Saga...</option>${activeSagas.map(s => `<option value="${s.id}" ${edSagaFilter===s.id?'selected':''}>${s.name}</option>`).join('')}</select><input type="text" id="edSearch" placeholder="Cerca serie..." style="width:150px; margin:0; height:36px" oninput="setEdSearch(this.value)" value="${edSearchText}"></div><div id="edicolaList"></div>`;
   renderEdicolaList();
 }
 window.setEdMode = (m) => { edMode = m; edicolaTab(app); }
 window.setEdSaga = (id) => { edSagaFilter = id; edicolaTab(app); }
+window.setEdSearch = (val) => { edSearchText = val.toLowerCase(); renderEdicolaList(); }
 window.renderEdicolaList = () => {
     const gid = getActiveGroup(); const user = db.users.find(u => u.id === db.currentUser);
     let series = db.series.filter(s => s.groupId === gid);
     if(edSagaFilter) series = series.filter(s => s.sagaId === edSagaFilter);
+    if(edSearchText) series = series.filter(s => s.name.toLowerCase().includes(edSearchText));
     series.sort((a,b)=>a.name.localeCompare(b.name));
     let h = "";
     series.forEach(sr => {
-        const groupVols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number);
-        const max = groupVols.length > 0 ? Math.max(...groupVols) : 0;
-        let gaps = []; for(let i=1; i<max; i++) if(!groupVols.includes(i)) gaps.push(i);
+        const vols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number);
+        const max = vols.length > 0 ? Math.max(...vols) : 0;
+        let gaps = []; for(let i=1; i<max; i++) if(!vols.includes(i)) gaps.push(i);
         let next = (edMode !== "GAPS" && (sr.status === "In Corso" || max === 0)) ? max + 1 : null;
         if(gaps.length > 0 || next) {
-            h += `<div class="card"><div class="row-edit" style="border:none; padding:0"><img src="${sr.img}" class="cover-big">
-                <div style="flex:1"><div style="display:flex; justify-content:space-between"><b>${sr.name}</b><span class="buy-tag">DA PRENDERE</span></div>
-                <div style="display:flex; flex-wrap:wrap; margin-top:10px">
-                    ${gaps.map(n => `<div class="vol-container"><span class="volumeStatic" style="border-color:${user.color}; color:${user.color}">${n}</span><span class="m-label" style="color:${user.color}">Mancante</span></div>`).join('')}
-                    ${next ? `<div class="vol-container"><span class="volumeStatic" style="border-color:#27ae60; color:#333">${next}</span><span class="m-label" style="color:#27ae60">Nuovo</span></div>` : ''}
-                </div></div></div></div>`;
+            h += `<div class="card"><div class="row-edit" style="border:none; padding:0"><img src="${sr.img}" class="cover-big"><div style="flex:1"><div style="display:flex; justify-content:space-between"><b>${sr.name}</b><span class="buy-tag">DA PRENDERE</span></div><div style="display:flex; flex-wrap:wrap; margin-top:10px">${gaps.map(n => `<div class="vol-container"><span class="volumeStatic" style="border-color:${user.color}; color:${user.color}">${n}</span><span class="m-label" style="color:${user.color}">Mancante</span></div>`).join('')}${next ? `<div class="vol-container"><span class="volumeStatic" style="border-color:#27ae60; color:#333">${next}</span><span class="m-label" style="color:#27ae60">Nuovo</span></div>` : ''}</div></div></div></div>`;
         }
     });
-    document.getElementById("edicolaList").innerHTML = h || `<div class="card">Nessuna mancanza.</div>`;
+    document.getElementById("edicolaList").innerHTML = h || `<div class="card">Nulla da acquistare.</div>`;
 }
 
 /* ================= LETTURA ================= */
 function readTab(c){
   const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML=`<h2 class="section-title">Lettura</h2><div class="card"><select id="readSagaSelect" onchange="renderReadList()"><option value="">-- Seleziona Saga (A-Z) --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="readArea"></div>`;
+  c.innerHTML=`<h2 class="section-title">Lettura</h2><div class="card"><select id="readSagaSelect" onchange="renderReadList()"><option value="">-- Seleziona Saga --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="readArea"></div>`;
 }
 window.renderReadList=()=>{
   const sagaId=document.getElementById("readSagaSelect").value; if(!sagaId)return;
   const user=db.users.find(u=>u.id===db.currentUser); const groupMembers = db.users.filter(u => u.groupId === user.groupId);
   document.getElementById("readArea").innerHTML=db.series.filter(s=>s.sagaId===sagaId).sort((a,b)=>a.name.localeCompare(b.name)).map(sr=>{
     const myGroupVols=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===user.groupId).sort((a,b)=>a.number-b.number);
-    return `<div class="card"><div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div style="flex:1"><h3>${sr.name}</h3>
-    <div style="display:flex;flex-wrap:wrap;margin-top:10px">${myGroupVols.map(v=>{
+    return `<div class="card"><div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div style="flex:1"><h3>${sr.name}</h3><p class="small"><b>Autore:</b> ${sr.authors}<br><b>Editore:</b> ${sr.publisher}</p><div style="display:flex;flex-wrap:wrap;margin-top:10px">${myGroupVols.map(v=>{
             const dots = groupMembers.map(m => db.read.some(r=>r.volId===v.id && r.userId===m.id) ? `<span class="dot" style="background:${m.color}"></span>` : '').join('');
             const amIRead=db.read.some(r=>r.volId===v.id && r.userId===user.id);
             return `<div class="vol-container"><button class="volumeBtn" style="${amIRead?`background:${user.color};color:white;border:none`:''}" onclick="toggleRead('${v.id}')">${v.number}</button><div class="read-indicators">${dots}</div></div>`;
@@ -178,44 +152,53 @@ window.renderReadList=()=>{
 }
 window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
 
-/* ================= AGGIUNTA E MODIFICA ================= */
+/* ================= AGGIUNGI NUMERI ================= */
 function addVolumes(c){
   const gid = getActiveGroup(); const series = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><select id="vSerie" onchange="showUserVols()"><option value="">-- Seleziona Serie (A-Z) --</option>${series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="seriePreview" style="margin-top:15px"></div><div id="vInputArea" style="display:none"><div class="row-edit" style="border:none; padding:0"><input type="number" id="vStart" placeholder="Dal n."><input type="number" id="vEnd" placeholder="Al n."></div><button class="ok" style="width:100%; margin-top:10px" onclick="saveVols()">Aggiungi</button></div></div><div id="vList"></div>`;
+  c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><select id="vSerie" onchange="showUserVols()"><option value="">-- Seleziona Serie --</option>${series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="seriePreview" style="margin-top:15px"></div><div id="vInputArea" style="display:none"><div class="row-edit" style="border:none; padding:0"><input type="number" id="vStart" placeholder="Dal n."><input type="number" id="vEnd" placeholder="Al n."></div><button class="ok" style="width:100%; margin-top:10px" onclick="saveVols()">Aggiungi</button><div id="errorArea" class="error-msg"></div></div></div><div id="vList"></div>`;
 }
 function showUserVols(){
-  const sid=document.getElementById("vSerie").value; if(!sid)return; const sr=db.series.find(x=>x.id===sid);
-  document.getElementById("vInputArea").style.display="block";
+  const sid=document.getElementById("vSerie").value; if(!sid){ document.getElementById("seriePreview").innerHTML=""; document.getElementById("vInputArea").style.display="none"; document.getElementById("vList").innerHTML=""; return; }
+  const sr=db.series.find(x=>x.id===sid); document.getElementById("vInputArea").style.display="block";
   document.getElementById("seriePreview").innerHTML=`<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><h3>${sr.name}</h3><p class="small">${sr.authors}</p></div></div>`;
   const groupVols=db.volumes.filter(v=>v.seriesId===sid && v.groupId===getActiveGroup()).sort((a,b)=>a.number-b.number);
-  document.getElementById("vList").innerHTML=`<div class="card"><h4>Collezione Gruppo:</h4><div style="display:flex;flex-wrap:wrap">${groupVols.map(v=>`<button class="volumeBtn" style="margin:2px" onclick="removeVol('${v.id}')">${v.number}</button>`).join('')}</div></div>`;
+  document.getElementById("vList").innerHTML=`<div class="card"><h4>Collezione Gruppo:</h4><div style="display:flex;flex-wrap:wrap">${groupVols.map(v=>`<button class="volumeBtn" onclick="removeVol('${v.id}')">${v.number}</button>`).join('')}</div></div>`;
 }
-window.removeVol=(id)=>{ db.volumes=db.volumes.filter(v=>v.id!==id); save(); showUserVols(); }
 window.saveVols=()=>{
-  const sid=document.getElementById("vSerie").value, start=Number(document.getElementById("vStart").value), end=Number(document.getElementById("vEnd").value)||start;
-  const gid=getActiveGroup(); for(let i=start;i<=end;i++) if(!db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, groupId:gid});
+  const sid=document.getElementById("vSerie").value, start=Number(document.getElementById("vStart").value), end=Number(document.getElementById("vEnd").value)||start, gid=getActiveGroup();
+  let doppi=[], added=0; 
+  for(let i=start; i<=end; i++) {
+      if(db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) doppi.push(i);
+      else { db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, groupId:gid}); added++; }
+  }
+  const err = document.getElementById("errorArea");
+  if(doppi.length>0) { err.style.display="block"; err.innerHTML=`⚠️ Alcuni numeri (${doppi.join(", ")}) sono già presenti e sono stati saltati.`; }
+  else { err.style.display="none"; }
   save(); showUserVols();
 }
+window.removeVol=(id)=>{ if(confirm("Eliminare questo volume?")){db.volumes=db.volumes.filter(v=>v.id!==id); save(); showUserVols();}}
 
+/* ================= AGGIUNGI SERIE ================= */
 function addSeries(c){
   const gid = getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
-  c.innerHTML = `<h2 class="section-title">Gestione Serie</h2>
+  c.innerHTML = `<h2 class="section-title">Nuove Serie</h2>
     <div class="card"><h3>Crea Saga</h3><input id="sagaNameOnly" placeholder="Nome Saga"><button class="ok" onclick="createSagaOnly()">Crea</button></div>
     <div class="card"><h3>Aggiungi Serie</h3><input id="nsTitolo" placeholder="Titolo">
       <select id="nsSagaSelect"><option value="NEW">Nuova Saga (stesso nome)</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select>
       <input id="nsAutore" placeholder="Autore"><input id="nsEditore" placeholder="Editore"><input id="nsImg" placeholder="URL Immagine">
       <select id="nsStatus"><option value="In Corso">In Corso</option><option value="Terminata">Terminata</option></select><button class="ok" onclick="createSerieFull()">Salva</button></div>
-    <h2 class="section-title">Modifica</h2><div class="card"><select id="selectSagaEdit" onchange="renderEditArea()"><option value="">-- Seleziona Saga (A-Z) --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="editArea"></div></div>`;
+    <h2 class="section-title">Gestione & Modifica</h2><div class="card"><select id="selectSagaEdit" onchange="renderEditArea()"><option value="">-- Seleziona Saga --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="editArea"></div></div>`;
 }
 window.renderEditArea=()=>{
     const sagaId=document.getElementById("selectSagaEdit").value; if(!sagaId)return;
     const saga=db.sagas.find(s=>s.id===sagaId); const seriesInSaga = db.series.filter(s=>s.sagaId===sagaId).sort((a,b)=>a.name.localeCompare(b.name));
     const allSagas = db.sagas.filter(s=>s.groupId===getActiveGroup()).sort((a,b)=>a.name.localeCompare(b.name));
-    let h=`<div class="card"><label>Rinomina Saga:</label><input id="editSagaName" value="${saga.name}"><button class="ok" onclick="updateSaga('${saga.id}')">Salva</button> <button class="danger" onclick="deleteSaga('${saga.id}')">Elimina Saga</button></div>`;
+    let h=`<div class="card"><label>Nome Saga:</label><input id="editSagaName" value="${saga.name}"><button class="ok" onclick="updateSaga('${saga.id}')">Salva</button> ${seriesInSaga.length===0?`<button class="danger" onclick="deleteSaga('${saga.id}')">Elimina Saga</button>`:''}</div>`;
     seriesInSaga.forEach(sr=>{
-        h+=`<div class="card"><div class="row-edit"><img src="${sr.img}" class="cover-big"><div style="flex:1"><input id="t-${sr.id}" value="${sr.name}"><input id="a-${sr.id}" value="${sr.authors}" class="small"><input id="e-${sr.id}" value="${sr.publisher}" class="small"><select id="st-${sr.id}"><option value="In Corso" ${sr.status==='In Corso'?'selected':''}>In Corso</option><option value="Terminata" ${sr.status==='Terminata'?'selected':''}>Terminata</option></select>
-        <label class="small">Sposta in Saga:</label><select id="m-${sr.id}">${allSagas.map(s=>`<option value="${s.id}" ${s.id===sagaId?'selected':''}>${s.name}</option>`).join('')}</select>
-        <div style="margin-top:10px"><button class="ok" onclick="updateFullSerie('${sr.id}')">Salva</button> <button class="danger" onclick="deleteSerie('${sr.id}')">Elimina</button></div></div></div></div>`;
+        h+=`<div class="card"><div class="row-edit"><img src="${sr.img}" class="cover-big"><div style="flex:1"><input id="t-${sr.id}" value="${sr.name}"><input id="a-${sr.id}" value="${sr.authors}" class="small"><input id="e-${sr.id}" value="${sr.publisher}" class="small"><input id="i-${sr.id}" value="${sr.img}" placeholder="URL Immagine" class="small">
+        <select id="st-${sr.id}"><option value="In Corso" ${sr.status==='In Corso'?'selected':''}>In Corso</option><option value="Terminata" ${sr.status==='Terminata'?'selected':''}>Terminata</option></select>
+        <label class="small">Sposta in:</label><select id="m-${sr.id}">${allSagas.map(s=>`<option value="${s.id}" ${s.id===sagaId?'selected':''}>${s.name}</option>`).join('')}</select>
+        <div style="margin-top:10px"><button class="ok" onclick="updateFullSerie('${sr.id}')">Salva Modifiche</button> <button class="danger" onclick="deleteSerie('${sr.id}')">Elimina</button></div></div></div></div>`;
     }); document.getElementById("editArea").innerHTML=h;
 }
 window.createSagaOnly=()=>{ const n=document.getElementById("sagaNameOnly").value.trim(); if(!n)return; db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app); }
@@ -226,49 +209,47 @@ window.createSerieFull=()=>{
   db.series.push({id:crypto.randomUUID(), name, sagaId, groupId:gid, authors:document.getElementById("nsAutore").value, publisher:document.getElementById("nsEditore").value, img:document.getElementById("nsImg").value, status:document.getElementById("nsStatus").value});
   save(); addSeries(app);
 }
-window.updateFullSerie=(id)=>{ const s=db.series.find(x=>x.id===id); s.name=document.getElementById(`t-${id}`).value; s.authors=document.getElementById(`a-${id}`).value; s.publisher=document.getElementById(`e-${id}`).value; s.status=document.getElementById(`st-${id}`).value; s.sagaId=document.getElementById(`m-${id}`).value; save(); renderEditArea(); }
-window.deleteSerie=(id)=>{ if(confirm("Eliminare la serie?")){ db.series=db.series.filter(s=>s.id!==id); db.volumes=db.volumes.filter(v=>v.seriesId!==id); save(); renderEditArea(); }}
+window.updateFullSerie=(id)=>{ 
+  const s=db.series.find(x=>x.id===id); s.name=document.getElementById(`t-${id}`).value; s.authors=document.getElementById(`a-${id}`).value; s.publisher=document.getElementById(`e-${id}`).value; s.img=document.getElementById(`i-${id}`).value; s.status=document.getElementById(`st-${id}`).value; s.sagaId=document.getElementById(`m-${id}`).value; 
+  save(); renderEditArea(); 
+}
+window.deleteSerie=(id)=>{ if(confirm("Eliminare serie e volumi?")){ db.series=db.series.filter(s=>s.id!==id); db.volumes=db.volumes.filter(v=>v.seriesId!==id); save(); renderEditArea(); }}
 window.updateSaga=(id)=>{ db.sagas.find(x=>x.id===id).name=document.getElementById("editSagaName").value; save(); renderEditArea(); }
-window.deleteSaga=(id)=>{ if(confirm("Eliminare la saga e TUTTO il suo contenuto?")){ db.sagas=db.sagas.filter(s=>s.id!==id); const sIds=db.series.filter(s=>s.sagaId===id).map(s=>s.id); db.series=db.series.filter(s=>s.sagaId!==id); db.volumes=db.volumes.filter(v=>!sIds.includes(v.seriesId)); save(); addSeries(app); }}
+window.deleteSaga=(id)=>{ db.sagas=db.sagas.filter(s=>s.id!==id); save(); addSeries(app); }
 
-/* ================= UTENTI E GRUPPI ================= */
+/* ================= UTENTI & RESET ================= */
 function users(c){
   c.innerHTML = "<h2 class='section-title'>Gruppi Famiglia</h2><div class='card'><h3>Nuovo Gruppo</h3><input id='newGroupName' placeholder='Nome Gruppo'><button class='ok' onclick='addGroup()'>Crea</button></div>";
   db.groups.forEach(g => { c.innerHTML += `<div class="card" style="display:flex; gap:10px"><input value="${g.name}" onchange="updateGroupName('${g.id}',this.value)" style="flex:1">${g.id!=='default'?`<button class="danger" onclick="deleteGroup('${g.id}')">X</button>`:''}</div>`; });
-  c.innerHTML += "<h2 class='section-title'>Profili Utenti</h2>";
+  c.innerHTML += "<h2 class='section-title'>Profili</h2>";
   db.users.forEach(u => { c.innerHTML += `<div class="card"><input id="un-${u.id}" value="${u.name}"> <input id="uc-${u.id}" type="color" value="${u.color}"><label class="small">Gruppo:</label><select id="ug-${u.id}">${db.groups.map(g=>(`<option value="${g.id}" ${u.groupId===g.id?'selected':''}>${g.name}</option>`)).join('')}</select><div style="margin-top:10px"><button class="ok" onclick="updateUserProfile('${u.id}')">Salva</button> <button class="danger" onclick="deleteUser('${u.id}')">Elimina</button></div></div>`; });
-  c.innerHTML += `<div class="card"><h3>Nuovo Utente</h3><input id="newUserName" placeholder="Nome Profilo"><select id="newUserGroup">${db.groups.map(g=>(`<option value="${g.id}">${g.name}</option>`)).join('')}</select><button class="ok" style="margin-top:10px" onclick="addNewUser()">Crea Utente</button></div>`;
-  c.innerHTML += `<h2 class='section-title' style='color:#e74c3c'>Impostazioni Fabbrica</h2><div class='card' style="border: 1px solid #e74c3c"><p class='small'>Azione irreversibile: cancella tutto e riporta il sito vuoto.</p><button class="danger" style="width:100%" onclick="fullResetStep1()">RESET TOTALE DATABASE</button></div>`;
+  c.innerHTML += `<div class="card"><h3>Nuovo Profilo</h3><input id="newUserName" placeholder="Nome Profilo"><select id="newUserGroup">${db.groups.map(g=>(`<option value="${g.id}">${g.name}</option>`)).join('')}</select><button class="ok" style="margin-top:10px" onclick="addNewUser()">Crea</button></div>`;
+  c.innerHTML += `<h2 class='section-title' style='color:#e74c3c'>Reset di Fabbrica</h2><div class='card' style="border: 1px solid #e74c3c"><p class='small'><b>CANCELLA TUTTO:</b> Il sito tornerà alle impostazioni originali vuote.</p><button class="danger" style="width:100%" onclick="fullReset()">RESET TOTALE DATABASE</button></div>`;
 }
-window.addNewUser=()=>{ const name=document.getElementById("newUserName").value; if(!name)return; const gid=document.getElementById("newUserGroup").value; db.users.push({id:crypto.randomUUID(), name, color:"#6c5ce7", groupId:gid}); save(); users(app); }
-window.deleteUser=(id)=>{ if(confirm("Eliminare l'utente?")){ db.users=db.users.filter(u=>u.id!==id); save(); users(app); }}
+window.addNewUser=()=>{ const name=document.getElementById("newUserName").value; if(!name)return; db.users.push({id:crypto.randomUUID(), name, color:"#6c5ce7", groupId:document.getElementById("newUserGroup").value}); save(); users(app); }
 window.addGroup=()=>{ const n=document.getElementById("newGroupName").value; if(!n)return; db.groups.push({id:crypto.randomUUID(), name:n}); save(); users(app); }
-window.deleteGroup=(id)=>{ if(confirm("Eliminare il gruppo?")){ db.groups=db.groups.filter(g=>g.id!==id); save(); users(app); }}
-window.updateGroupName=(id,v)=>{ db.groups.find(g=>g.id===id).name=v; save(); }
+window.deleteGroup=(id)=>{ if(confirm("Eliminare gruppo?")){ db.groups=db.groups.filter(g=>g.id!==id); save(); users(app); }}
 window.updateUserProfile=(id)=>{ const u=db.users.find(x=>x.id===id); u.name=document.getElementById(`un-${id}`).value; u.color=document.getElementById(`uc-${id}`).value; u.groupId=document.getElementById(`ug-${id}`).value; save(); users(app); }
-
-window.fullResetStep1 = () => { if(confirm("SEI SICURO? Perderai ogni dato.")){ if(confirm("CONFERMA FINALE: Reset totale?")){ localStorage.removeItem("manganest_v5"); location.reload(); }} }
+window.fullReset=()=>{ if(confirm("SICURO? Perderai tutto.") && confirm("ULTIMA CONFERMA: Reset?")){ localStorage.removeItem("manganest_v5"); location.reload(); }}
 
 /* ================= BACKUP ================= */
 function backupMenu(c){
-    c.innerHTML = `<h2 class="section-title">Backup</h2><div class="card"><h3>Esporta</h3><p class="small">Salva tutto (serie, foto, letture, utenti).</p><button class="ok" style="width:100%" onclick="exportDB()">Scarica Backup</button></div>
-    <div class="card"><h3>Importa</h3><p class="small">Carica un backup per sincronizzare i dati.</p><input type="file" id="importFile" accept=".json"><button class="ok" style="background:#00b894; width:100%; margin-top:10px" onclick="importDB()">Ripristina Backup</button></div>`;
+    c.innerHTML = `<h2 class="section-title">Backup</h2><div class="card"><h3>Esporta</h3><p class="small">Scarica ogni dato (serie, foto, letture, gruppi).</p><button class="ok" style="width:100%" onclick="exportDB()">Scarica Backup .json</button></div>
+    <div class="card"><h3>Importa</h3><p class="small">Carica un file di backup per sovrascrivere i dati attuali.</p><input type="file" id="importFile" accept=".json"><button class="ok" style="background:#00b894; width:100%; margin-top:10px" onclick="importDB()">Ripristina Database</button></div>`;
 }
 window.exportDB = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-    const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "manganest_full_backup.json");
+    const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "manganest_pro_backup.json");
     document.body.appendChild(dl); dl.click(); dl.remove();
 }
 window.importDB = () => {
     const file = document.getElementById('importFile').files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    const reader = new FileReader(); reader.onload = (e) => {
         try {
             const imported = JSON.parse(e.target.result);
             if (imported.series && imported.users) { if(confirm("Sovrascrivere tutto?")) { db = imported; save(); location.reload(); } }
         } catch (err) { alert("File non valido."); }
-    };
-    reader.readAsText(file);
+    }; reader.readAsText(file);
 }
 
 render();
