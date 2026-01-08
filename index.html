@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>MangaNest - Simone & Andrea Checkpoint</title>
+<title>MangaNest - Edicola Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--main:#6c5ce7;}
@@ -89,30 +89,35 @@ function home(){
   });
 }
 
-/* 1. EDICOLA */
+/* 1. EDICOLA (COLORATA) */
 function edicolaTab(c){
   const gid = getActiveGroup();
+  const user = db.users.find(u => u.id === db.currentUser);
   const allSeries = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
   let h = `<h2 class="section-title">Lista Spesa</h2>`;
   let count = 0;
   allSeries.forEach(sr => {
     const saga = db.sagas.find(sg => sg.id === sr.sagaId);
     const groupVols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number).sort((a,b)=>a-b);
-    let toBuy = []; let note = "";
+    let gaps = []; let next = null; let note = "";
     if(groupVols.length > 0) {
       const max = Math.max(...groupVols);
-      for(let i=1; i<max; i++) if(!groupVols.includes(i)) toBuy.push(i);
-      if(sr.status === "In Corso") { toBuy.push(max + 1); note = `Ultimo posseduto: ${max}. Prendi il ${max+1}`; }
-    } else { toBuy.push(1); note = "Serie nuova: inizia dal n.1"; }
-    if(toBuy.length > 0) {
+      for(let i=1; i<max; i++) if(!groupVols.includes(i)) gaps.push(i);
+      if(sr.status === "In Corso") { next = max + 1; note = `Ultimo posseduto: ${max}.`; }
+    } else { next = 1; note = "Inizia la serie dal n.1"; }
+
+    if(gaps.length > 0 || next) {
       count++;
-      h += `<div class="card"><div style="display:flex; justify-content:space-between"><b>${saga ? saga.name + ' - ' : ''}${sr.name}</b><span class="buy-tag">DA COMPRARE</span></div><p class="small">${sr.authors} | ${sr.publisher}</p><div><b>Numeri:</b> ${[...new Set(toBuy)].sort((a,b)=>a-b).map(n => `<span class="volumeStatic" style="border-color:#27ae60">${n}</span>`).join('')}</div><p class="small" style="color:#27ae60"><i>${note}</i></p></div>`;
+      h += `<div class="card"><div style="display:flex; justify-content:space-between"><b>${saga ? saga.name + ' - ' : ''}${sr.name}</b><span class="buy-tag">DA COMPRARE</span></div><p class="small">${sr.authors} | ${sr.publisher}</p><div>
+            ${gaps.map(n => `<span class="volumeStatic" style="border-color:${user.color}; color:${user.color}">#${n}</span>`).join('')}
+            ${next ? `<span class="volumeStatic" style="border-color:#27ae60">#${next}</span>` : ''}
+        </div><p class="small" style="color:#27ae60"><i>${note} ${gaps.length>0?'(Evidenziati i numeri mancanti)':''}</i></p></div>`;
     }
   });
   c.innerHTML = count > 0 ? h : `<div class="card">Nessun acquisto necessario!</div>`;
 }
 
-/* 2. AGGIUNGI SERIE (ORDINATA) */
+/* 2. GESTIONE SERIE */
 function addSeries(c){
   const gid = getActiveGroup();
   const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
@@ -145,27 +150,21 @@ function addVolumes(c){
   c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><select id="vSerie" onchange="showUserVols()"><option value="">-- Seleziona Serie (A-Z) --</option>${series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="seriePreview" style="margin-top:15px"></div><div id="vInputArea" style="display:none"><div class="row-edit" style="border:none; padding:0"><input type="number" id="vStart" placeholder="Dal n."><input type="number" id="vEnd" placeholder="Al n."></div><button class="ok" style="width:100%; margin-top:10px" onclick="saveVols()">Aggiungi</button></div><div id="warningArea" class="warning"></div></div><div id="vList"></div>`;
 }
 
-/* 4. UTENTI (GESTIONE COMPLETA) */
+/* 4. UTENTI */
 function users(c){
   c.innerHTML = "<h2 class='section-title'>Gruppi Famiglia</h2>";
   c.innerHTML += `<div class="card"><h3>Nuovo Gruppo</h3><input id="newGroupName" placeholder="Nome Gruppo"><button class="ok" onclick="addGroup()">Crea</button></div>`;
   db.groups.forEach(g => { c.innerHTML += `<div class="card" style="display:flex; gap:10px"><input value="${g.name}" onchange="updateGroupName('${g.id}',this.value)" style="flex:1">${g.id!=='default'?`<button class="danger" onclick="deleteGroup('${g.id}')">X</button>`:''}</div>`; });
-  
   c.innerHTML += "<h2 class='section-title'>Profili Utenti</h2>";
   db.users.forEach(u => { 
-      c.innerHTML += `<div class="card"><input id="un-${u.id}" value="${u.name}"> <input id="uc-${u.id}" type="color" value="${u.color}"><label class="small">Associa a Gruppo:</label><select id="ug-${u.id}">${db.groups.map(g=>(`<option value="${g.id}" ${u.groupId===g.id?'selected':''}>${g.name}</option>`)).join('')}</select><div style="margin-top:10px"><button class="ok" onclick="updateUserProfile('${u.id}')">Salva</button> <button class="danger" onclick="deleteUser('${u.id}')">Elimina</button></div></div>`; 
+      c.innerHTML += `<div class="card"><input id="un-${u.id}" value="${u.name}"> <input id="uc-${u.id}" type="color" value="${u.color}"><label class="small">Gruppo:</label><select id="ug-${u.id}">${db.groups.map(g=>(`<option value="${g.id}" ${u.groupId===g.id?'selected':''}>${g.name}</option>`)).join('')}</select><div style="margin-top:10px"><button class="ok" onclick="updateUserProfile('${u.id}')">Salva</button> <button class="danger" onclick="deleteUser('${u.id}')">Elimina</button></div></div>`; 
   });
-  c.innerHTML += `<div class="card"><h3>Crea Nuovo Utente</h3><input id="newUserName" placeholder="Nome Profilo"><label class="small">Scegli Gruppo:</label><select id="newUserGroup">${db.groups.map(g=>(`<option value="${g.id}">${g.name}</option>`)).join('')}</select><button class="ok" style="margin-top:10px" onclick="addNewUser()">Crea Utente</button></div>`;
+  c.innerHTML += `<div class="card"><h3>Nuovo Utente</h3><input id="newUserName" placeholder="Nome Profilo"><select id="newUserGroup">${db.groups.map(g=>(`<option value="${g.id}">${g.name}</option>`)).join('')}</select><button class="ok" style="margin-top:10px" onclick="addNewUser()">Crea Utente</button></div>`;
 }
-window.addNewUser=()=>{
-    const name=document.getElementById("newUserName").value; if(!name)return;
-    const gid=document.getElementById("newUserGroup").value;
-    db.users.push({id:crypto.randomUUID(), name, color:"#6c5ce7", groupId:gid});
-    save(); users(app);
-}
-window.deleteUser=(id)=>{ if(confirm("Eliminare l'utente?")){ db.users=db.users.filter(u=>u.id!==id); save(); users(app); }}
 
 /* FUNZIONI CORE */
+window.addNewUser=()=>{ const name=document.getElementById("newUserName").value; if(!name)return; const gid=document.getElementById("newUserGroup").value; db.users.push({id:crypto.randomUUID(), name, color:"#6c5ce7", groupId:gid}); save(); users(app); }
+window.deleteUser=(id)=>{ if(confirm("Eliminare l'utente?")){ db.users=db.users.filter(u=>u.id!==id); save(); users(app); }}
 window.createSagaOnly=()=>{ const n=document.getElementById("sagaNameOnly").value.trim(); if(!n)return; db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app); }
 window.createSerieFull=()=>{ const name=document.getElementById("nsTitolo").value.trim(); if(!name)return; let sagaId=document.getElementById("nsSagaSelect").value; const gid=getActiveGroup(); if(sagaId==="NEW"){ const ns={id:crypto.randomUUID(), name, groupId:gid}; db.sagas.push(ns); sagaId=ns.id; } db.series.push({id:crypto.randomUUID(), name, sagaId, groupId:gid, authors:document.getElementById("nsAutore").value, publisher:document.getElementById("nsEditore").value, img:document.getElementById("nsImg").value, status:document.getElementById("nsStatus").value}); save(); addSeries(app); }
 window.updateFullSerie=(id)=>{ const s=db.series.find(x=>x.id===id); s.name=document.getElementById(`t-${id}`).value; s.authors=document.getElementById(`a-${id}`).value; s.publisher=document.getElementById(`e-${id}`).value; s.status=document.getElementById(`st-${id}`).value; s.sagaId=document.getElementById(`m-${id}`).value; save(); renderEditArea(); }
@@ -189,7 +188,7 @@ function showUserVols(){
 }
 window.removeVol=(id)=>{ db.volumes=db.volumes.filter(v=>v.id!==id); db.read=db.read.filter(r=>r.volId!==id); save(); showUserVols(); }
 
-/* LETTURA & DB (RESTO INVARIATO) */
+/* LETTURA & CATALOGO */
 function readTab(c){
   const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
   c.innerHTML=`<h2 class="section-title">Lettura</h2><div class="card"><select id="readSagaSelect" onchange="renderReadList()"><option value="">-- Seleziona Saga (A-Z) --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="readArea"></div>`;
