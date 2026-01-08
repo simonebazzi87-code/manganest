@@ -12,12 +12,13 @@ nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap}
 nav button{height:40px;border:none;border-radius:6px;padding:0 14px;cursor:pointer}
 main{padding:12px}
 .card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .cover{width:60px;height:80px;object-fit:cover;border-radius:4px;background:#ccc}
+.small{font-size:12px;color:#555}
 input,select{padding:6px;margin:4px 0;width:100%}
 .ok{background:var(--main);color:#fff}
 .danger{background:#e74c3c;color:#fff}
-.volume{display:inline-flex;align-items:center;gap:6px;margin:4px;padding:6px;border-radius:6px;background:#eee}
+.volumeBtn{margin:2px;padding:6px 10px;border-radius:6px;border:none;cursor:pointer}
 </style>
 </head>
 
@@ -34,7 +35,7 @@ input,select{padding:6px;margin:4px 0;width:100%}
 <main id="app"></main>
 
 <script>
-/* ==================== DATABASE ==================== */
+/* ================= DATABASE ================= */
 let db = JSON.parse(localStorage.getItem("manganest")) || {
   users:[],
   currentUser:null,
@@ -43,14 +44,15 @@ let db = JSON.parse(localStorage.getItem("manganest")) || {
   volumes:[]
 };
 const save=()=>localStorage.setItem("manganest",JSON.stringify(db));
+
 const app=document.getElementById("app");
 const menu=document.getElementById("menu");
 const who=document.getElementById("who");
 const switchBtn=document.getElementById("switchUser");
 
-/* ==================== RENDER BASE ==================== */
 switchBtn.onclick=()=>{db.currentUser=null;render()};
 
+/* ================= RENDER ================= */
 function render(){
   const u=db.users.find(u=>u.id===db.currentUser);
   document.documentElement.style.setProperty("--main",u?.color||"#6c5ce7");
@@ -63,7 +65,6 @@ function render(){
   [
     ["Database",database],
     ["Aggiungi numeri",addVolumes],
-    ["Lettura",lettura],
     ["Utenti",users]
   ].forEach(([t,f])=>{
     const b=document.createElement("button");
@@ -75,7 +76,7 @@ function render(){
   database(app);
 }
 
-/* ==================== HOME ==================== */
+/* ================= HOME ================= */
 function home(){
   app.innerHTML="<h3>Scegli utente</h3>";
   db.users.forEach(u=>{
@@ -88,9 +89,10 @@ function home(){
   });
 }
 
-/* ==================== UTENTI ==================== */
+/* ================= UTENTI ================= */
 function users(c){
   c.innerHTML="<h2>Utenti</h2>";
+
   db.users.forEach(u=>{
     const d=document.createElement("div");
     d.className="card";
@@ -100,7 +102,7 @@ function users(c){
       <button class="ok">Salva</button>
     `;
     d.querySelector(".ok").onclick=()=>{
-      u.name=d.querySelector("input").value;
+      u.name=d.querySelector("input").value.trim();
       u.color=d.querySelector("input[type=color]").value;
       save();render();
     };
@@ -119,81 +121,124 @@ function users(c){
   c.appendChild(n);
 }
 
-/* ==================== DATABASE (RIDOTTO, GIÀ OK) ==================== */
+/* ================= DATABASE ================= */
 function database(c){
-  c.innerHTML="<h2>Database</h2><p>✔️ Database OK (come versione precedente)</p>";
-}
+  c.innerHTML="<h2>Database</h2>";
 
-/* ==================== AGGIUNGI NUMERI (RIDOTTO, GIÀ OK) ==================== */
-function addVolumes(c){
-  c.innerHTML="<h2>Aggiungi numeri</h2><p>✔️ Funzione già validata</p>";
-}
-
-/* ==================== LETTURA COMPLETA ==================== */
-function lettura(c){
-  c.innerHTML="<h2>Lettura</h2>";
-
-  const sagaSel=document.createElement("select");
-  sagaSel.innerHTML=`<option value="">Seleziona saga</option>`+
-    db.sagas.sort((a,b)=>a.name.localeCompare(b.name))
-    .map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
-
-  const seriesSel=document.createElement("select");
-  seriesSel.innerHTML=`<option value="">Seleziona serie</option>`;
-
-  const box=document.createElement("div");
-
-  sagaSel.onchange=()=>{
-    const sid=sagaSel.value;
-    seriesSel.innerHTML=`<option value="">Seleziona serie</option>`+
-      db.series.filter(s=>s.sagaId===sid)
-      .sort((a,b)=>a.name.localeCompare(b.name))
-      .map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
-    box.innerHTML="";
+  /* NUOVA SAGA */
+  const ns=document.createElement("div");
+  ns.className="card";
+  ns.innerHTML=`<h3>Nuova saga</h3><input><button class="ok">Aggiungi</button>`;
+  ns.querySelector("button").onclick=()=>{
+    const v=ns.querySelector("input").value.trim();
+    if(!v)return;
+    db.sagas.push({id:crypto.randomUUID(),name:v});
+    save();render();
   };
+  c.appendChild(ns);
 
-  seriesSel.onchange=()=>renderVolumes(seriesSel.value);
+  /* NUOVA SERIE */
+  const s=document.createElement("div");
+  s.className="card";
+  s.innerHTML=`
+    <h3>Nuova serie</h3>
+    <input placeholder="Nome">
+    <select>
+      <option value="">Nessuna saga</option>
+      ${db.sagas.sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${x.id}">${x.name}</option>`)}
+    </select>
+    <select>
+      <option>in corso</option>
+      <option>finita</option>
+      <option>interrotta</option>
+    </select>
+    <input placeholder="Autori (,)">
+    <input placeholder="Casa editrice">
+    <input placeholder="URL immagine">
+    <button class="ok">Aggiungi</button>
+  `;
+  s.querySelector("button").onclick=()=>{
+    const inputs=s.querySelectorAll("input,select");
+    const name=inputs[0].value.trim();
+    if(!name)return;
+    let sagaId=inputs[1].value;
+    if(!sagaId){
+      const sg={id:crypto.randomUUID(),name};
+      db.sagas.push(sg);
+      sagaId=sg.id;
+    }
+    db.series.push({
+      id:crypto.randomUUID(),
+      name,
+      sagaId,
+      status:inputs[2].value,
+      authors:inputs[3].value.split(",").map(x=>x.trim()).filter(Boolean),
+      publisher:inputs[4].value,
+      img:inputs[5].value
+    });
+    save();render();
+  };
+  c.appendChild(s);
 
-  c.appendChild(sagaSel);
-  c.appendChild(seriesSel);
-  c.appendChild(box);
+  /* RECAP */
+  db.sagas.sort((a,b)=>a.name.localeCompare(b.name)).forEach(g=>{
+    const box=document.createElement("div");
+    box.className="card";
+    box.innerHTML=`<h3>${g.name}</h3>`;
 
-  function renderVolumes(seriesId){
-    box.innerHTML="";
-    const sr=db.series.find(s=>s.id===seriesId);
-    if(!sr)return;
-
-    const header=document.createElement("div");
-    header.className="row";
-    header.innerHTML=`<img class="cover" src="${sr.img||'https://via.placeholder.com/60x80'}"><b>${sr.name}</b>`;
-    box.appendChild(header);
-
-    const vols=db.volumes
-      .filter(v=>v.seriesId===seriesId)
-      .sort((a,b)=>a.number-b.number);
-
-    vols.forEach(v=>{
-      if(!v.readBy) v.readBy={};
-      const d=document.createElement("div");
-      d.className="volume";
-      d.innerHTML=`<b>${v.number}</b>`;
-
-      db.users.forEach(u=>{
-        const cb=document.createElement("input");
-        cb.type="checkbox";
-        cb.checked=!!v.readBy[u.id];
-        cb.disabled=u.id!==db.currentUser;
-        cb.onchange=()=>{
-          v.readBy[u.id]=cb.checked;
-          save();
-        };
-        cb.style.accentColor=u.color;
-        d.appendChild(cb);
+    db.series.filter(s=>s.sagaId===g.id)
+      .sort((a,b)=>a.name.localeCompare(b.name))
+      .forEach(sr=>{
+        const r=document.createElement("div");
+        r.className="row";
+        r.innerHTML=`
+          <img class="cover" src="${sr.img||'https://via.placeholder.com/60x80'}">
+          <div>
+            <b>${sr.name}</b><br>
+            <span class="small">${sr.status} – ${sr.publisher}</span><br>
+            <span class="small">${sr.authors.join(", ")}</span>
+          </div>
+        `;
+        box.appendChild(r);
       });
 
-      box.appendChild(d);
-    });
-  }
+    c.appendChild(box);
+  });
+}
+
+/* ================= AGGIUNGI NUMERI ================= */
+function addVolumes(c){
+  c.innerHTML="<h2>Aggiungi numeri</h2>";
+  if(!db.series.length)return;
+
+  const s=document.createElement("div");
+  s.className="card";
+  s.innerHTML=`
+    <select></select>
+    <input type="number" placeholder="Dal numero">
+    <input type="number" placeholder="Al numero (facoltativo)">
+    <button class="ok">Aggiungi volumi</button>
+    <div id="recap"></div>
+  `;
+  const sel=s.querySelector("select");
+  db.series.sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(x=>sel.innerHTML+=`<option value="${x.id}">${x.name}</option>`);
+
+  s.querySelector("button").onclick=()=>{
+    const start=Number(s.querySelectorAll("input")[0].value);
+    const end=Number(s.querySelectorAll("input")[1].value)||start;
+    const seriesId=sel.value;
+    const recap=s.querySelector("#recap");
+    recap.innerHTML="";
+    for(let i=start;i<=end;i++){
+      if(db.volumes.find(v=>v.seriesId===seriesId&&v.number===i))continue;
+      db.volumes.push({id:crypto.randomUUID(),seriesId,number:i});
+      recap.innerHTML+=`<button class="volumeBtn">${i}</button>`;
+    }
+    save();
+  };
+
+  c.appendChild(s);
 }
 
 render();
