@@ -1,158 +1,194 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<title>MangaNest</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-:root{--main:#6c5ce7;--bg:#f5f6fa;}
-body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);}
-header{background:var(--main);color:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;}
-nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;}
-nav button{height:42px;border:none;border-radius:6px;padding:0 16px;cursor:pointer;}
-main{padding:12px;}
-.card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;}
-.volumes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-.volume{padding:6px 10px;border-radius:6px;background:#eee;}
-select,input{width:100%;padding:6px;margin:6px 0;}
-.debug{background:#ffeb3b;padding:10px;font-weight:bold;margin-bottom:10px;}
-</style>
+  <meta charset="UTF-8" />
+  <title>MangaNest</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f4;
+    }
+
+    header {
+      background: #222;
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+
+    nav {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      background: #ddd;
+    }
+
+    nav button {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    section {
+      display: none;
+      padding: 15px;
+    }
+
+    section.active {
+      display: block;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    select {
+      padding: 6px;
+      margin-right: 10px;
+    }
+
+    .volumi {
+      margin-top: 15px;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .volume {
+      display: inline-block;
+      padding: 6px 10px;
+      margin: 4px;
+      background: #eee;
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1 style="margin:0">MangaNest</h1>
-    <div id="who"></div>
-  </div>
-  <button id="switchUser" style="display:none">Cambia utente</button>
+  <h1>MangaNest</h1>
 </header>
 
-<nav id="menu"></nav>
-<main id="app"></main>
+<nav>
+  <button onclick="showSection('lettura')">Lettura</button>
+</nav>
+
+<!-- ================= LETTURA ================= -->
+<section id="lettura" class="active">
+  <h2>Lettura</h2>
+
+  <label>
+    Saga:
+    <select id="letturaSaga" onchange="onSagaChange()">
+      <option value="">— Seleziona saga —</option>
+    </select>
+  </label>
+
+  <label>
+    Serie:
+    <select id="letturaSerie" onchange="mostraVolumi()">
+      <option value="">— Seleziona serie —</option>
+    </select>
+  </label>
+
+  <div id="letturaVolumi" class="volumi"></div>
+</section>
 
 <script>
-let db = JSON.parse(localStorage.getItem("manganest")) || {
-  users:[
-    {id:"simone",name:"Simone",color:"#6c5ce7"},
-    {id:"andrea",name:"Andrea",color:"#e84393"}
-  ],
-  currentUser:null,
-  sagas:[],
-  series:[],
-  volumes:[]
+/* ================= DATI DI TEST =================
+   (servono solo per verificare che la lettura funzioni)
+   Poi li collegheremo al vero database
+*/
+const data = {
+  saghe: {
+    "Fushigi Yugi": ["Fushigi Yugi", "Genbu Kaiden"],
+    "Seven Deadly Sins": ["Seven Deadly Sins", "Four Knights of the Apocalypse"]
+  },
+  serie: {
+    "Fushigi Yugi": [1,2,3,4,5],
+    "Genbu Kaiden": [1,2,3],
+    "Seven Deadly Sins": [1,2,3,4],
+    "Four Knights of the Apocalypse": [1,2]
+  }
 };
 
-function save(){ localStorage.setItem("manganest",JSON.stringify(db)); }
+/* ================= INIZIALIZZAZIONE ================= */
+initLettura();
 
-const app=document.getElementById("app");
-const menu=document.getElementById("menu");
-const who=document.getElementById("who");
-const switchBtn=document.getElementById("switchUser");
+function initLettura() {
+  const sagaSelect = document.getElementById("letturaSaga");
 
-switchBtn.onclick=()=>{ db.currentUser=null; render(); };
-
-function render(){
-  const user=db.users.find(u=>u.id===db.currentUser);
-  document.documentElement.style.setProperty("--main", user?.color || "#6c5ce7");
-  who.textContent=user ? "Utente: "+user.name : "";
-  switchBtn.style.display=user?"inline-block":"none";
-
-  menu.innerHTML="";
-  if(!db.currentUser){ home(); return; }
-
-  [
-    ["Database",database],
-    ["Aggiungi numeri",addVolumes],
-    ["Utenti",users],
-    ["Lettura",reading]
-  ].forEach(([t,f])=>{
-    const b=document.createElement("button");
-    b.textContent=t;
-    b.onclick=()=>f(app);
-    menu.appendChild(b);
-  });
-
-  database(app);
-}
-
-function home(){
-  app.innerHTML="<h2>Scegli utente</h2>";
-  db.users.sort((a,b)=>a.name.localeCompare(b.name)).forEach(u=>{
-    const b=document.createElement("button");
-    b.textContent=u.name;
-    b.style.background=u.color;
-    b.style.color="#fff";
-    b.style.margin="6px";
-    b.onclick=()=>{ db.currentUser=u.id; save(); render(); };
-    app.appendChild(b);
-  });
-}
-
-/* ------------------ SEZIONE LETTURA (DEBUG) ------------------ */
-function reading(c){
-  c.innerHTML=`
-    <div class="debug">🚧 LETTURA – STEP 1 (DEBUG OK)</div>
-
-    <div class="card">
-      <label>Saga</label>
-      <select id="sagaSel">
-        <option value="">-- Tutte le saghe --</option>
-        ${db.sagas.sort((a,b)=>a.name.localeCompare(b.name))
-          .map(s=>`<option value="${s.id}">${s.name}</option>`).join("")}
-      </select>
-
-      <label>Serie</label>
-      <select id="seriesSel">
-        <option value="">-- Seleziona serie --</option>
-      </select>
-
-      <div id="result"></div>
-    </div>
-  `;
-
-  const sagaSel=document.getElementById("sagaSel");
-  const seriesSel=document.getElementById("seriesSel");
-  const result=document.getElementById("result");
-
-  function refreshSeries(){
-    let list=db.series;
-    if(sagaSel.value) list=list.filter(s=>s.sagaId===sagaSel.value);
-    seriesSel.innerHTML=
-      `<option value="">-- Seleziona serie --</option>`+
-      list.sort((a,b)=>a.name.localeCompare(b.name))
-          .map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
-    result.innerHTML="";
-  }
-
-  function showVolumes(){
-    result.innerHTML="";
-    if(!seriesSel.value) return;
-    const vols=db.volumes
-      .filter(v=>v.series===seriesSel.value)
-      .sort((a,b)=>a.number-b.number);
-    const box=document.createElement("div");
-    box.className="volumes";
-    vols.forEach(v=>{
-      const d=document.createElement("div");
-      d.className="volume";
-      d.textContent=v.number;
-      box.appendChild(d);
+  Object.keys(data.saghe)
+    .sort()
+    .forEach(saga => {
+      const opt = document.createElement("option");
+      opt.value = saga;
+      opt.textContent = saga;
+      sagaSelect.appendChild(opt);
     });
-    result.appendChild(box);
-  }
-
-  sagaSel.onchange=refreshSeries;
-  seriesSel.onchange=showVolumes;
-
-  refreshSeries();
 }
 
-function database(c){ c.innerHTML="<p>Database (non modificato)</p>"; }
-function addVolumes(c){ c.innerHTML="<p>Aggiungi numeri (non modificato)</p>"; }
-function users(c){ c.innerHTML="<p>Utenti (non modificato)</p>"; }
+/* ================= CAMBIO SAGA ================= */
+function onSagaChange() {
+  const saga = document.getElementById("letturaSaga").value;
+  const serieSelect = document.getElementById("letturaSerie");
+  const volumiDiv = document.getElementById("letturaVolumi");
 
-render();
+  serieSelect.innerHTML = `<option value="">— Seleziona serie —</option>`;
+  volumiDiv.innerHTML = "";
+
+  if (!saga) return;
+
+  data.saghe[saga]
+    .slice()
+    .sort()
+    .forEach(serie => {
+      const opt = document.createElement("option");
+      opt.value = serie;
+      opt.textContent = serie;
+      serieSelect.appendChild(opt);
+    });
+
+  // se selezioni solo la saga, mostra tutti i volumi della saga
+  mostraVolumiSaga(saga);
+}
+
+/* ================= MOSTRA VOLUMI SERIE ================= */
+function mostraVolumi() {
+  const serie = document.getElementById("letturaSerie").value;
+  const volumiDiv = document.getElementById("letturaVolumi");
+  volumiDiv.innerHTML = "";
+
+  if (!serie) return;
+
+  const volumi = data.serie[serie] || [];
+
+  volumi.forEach(v => {
+    const span = document.createElement("span");
+    span.className = "volume";
+    span.textContent = `${serie} #${v}`;
+    volumiDiv.appendChild(span);
+  });
+}
+
+/* ================= MOSTRA VOLUMI SAGA ================= */
+function mostraVolumiSaga(saga) {
+  const volumiDiv = document.getElementById("letturaVolumi");
+  volumiDiv.innerHTML = "";
+
+  data.saghe[saga].forEach(serie => {
+    (data.serie[serie] || []).forEach(v => {
+      const span = document.createElement("span");
+      span.className = "volume";
+      span.textContent = `${serie} #${v}`;
+      volumiDiv.appendChild(span);
+    });
+  });
+}
 </script>
+
 </body>
 </html>
