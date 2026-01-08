@@ -2,95 +2,266 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>MangaNest Cloud Debug</title>
+<title>MangaNest - Cloud Final</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--main:#6c5ce7;}
-body{margin:0;font-family:sans-serif;background:#f5f6fa;padding:20px}
-.card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);max-width:400px;margin:auto}
-input{width:100%;padding:12px;margin:10px 0;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
-button{width:100%;padding:12px;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-top:10px}
-.ok{background:var(--main);color:white}
-.save{background:#2d3436;color:white}
-.status{margin-top:20px;padding:10px;border-radius:6px;display:none;font-size:13px}
+body{margin:0;font-family:system-ui;background:#f5f6fa}
+header{background:var(--main);color:#fff;padding:10px;display:flex;justify-content:space-between;align-items:center}
+nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;border-bottom:1px solid #ddd}
+nav button{height:40px;border:none;border-radius:6px;padding:0 14px;cursor:pointer;background:#eee}
+nav button.active{background:var(--main);color:#fff}
+main{padding:12px}
+.card{background:#fff;border-radius:8px;padding:15px;margin-bottom:12px;border:1px solid #eee;box-shadow: 0 2px 4px rgba(0,0,0,0.05)}
+.row-edit{display:flex;gap:15px;align-items:flex-start;padding:10px;border-bottom:1px solid #eee; flex-wrap: wrap;}
+.cover-big{width:100px; height:150px; object-fit:cover; border-radius:8px; background:#ccc; border:1px solid #ddd;}
+input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-radius:6px; box-sizing: border-box;}
+.ok{background:var(--main);color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
+.danger{background:#e74c3c;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
+.vol-container { display: flex; flex-direction: column; align-items: center; margin: 4px; }
+.volumeStatic{padding:5px 12px;border-radius:6px;border:1.5px solid #eee;background:#fff;display:inline-block;font-size:14px;font-weight:bold;text-align:center}
+.m-label{font-size:10px; font-weight:bold; margin-top:2px; text-transform:uppercase}
+.read-indicators { display: flex; gap: 3px; height: 8px; margin-top: 4px; justify-content: center; min-height:8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,0.1); }
+.section-title{border-left: 4px solid var(--main); padding-left: 10px; margin: 20px 0 10px 0; color: #2d3436}
+.buy-tag{background:#27ae60; color:white; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold; height:fit-content}
+.small{font-size:12px; color:#666}
+.filter-bar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee}
+.filter-bar button{padding:8px 15px; border-radius:6px; border:1px solid #ddd; background:#f9f9f9; cursor:pointer; font-weight:500}
+.filter-bar button.active{background:var(--main); color:#fff; border-color:var(--main)}
 </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>☁️ Sincronizzazione</h2>
-    <p style="font-size:13px;color:#666">Inserisci le chiavi di GitHub</p>
-    
-    <input id="tk" type="password" placeholder="GitHub Token (ghp_...)">
-    <input id="gid" placeholder="Gist ID">
-    
-    <button class="save" onclick="salva()">1. Salva Chiavi</button>
-    <hr>
-    <button class="ok" onclick="test( 'UPLOAD' )">2. Prova Invia (Upload)</button>
-    <button class="ok" style="background:#00b894" onclick="test( 'DOWNLOAD' )">3. Prova Ricevi (Download)</button>
-    
-    <div id="stat" class="status"></div>
-</div>
+<header>
+  <h2>MangaNest <span id="groupLabel" style="font-size:12px; opacity:0.8"></span></h2>
+  <div><span id="who"></span> <button id="switchUser" style="display:none;font-size:10px;margin-left:10px">Esci</button></div>
+</header>
+<nav id="menu"></nav>
+<main id="app"></main>
 
 <script>
-// Carica dati esistenti
-let config = JSON.parse(localStorage.getItem("manga_cloud")) || { token: "", id: "" };
-document.getElementById('tk').value = config.token;
-document.getElementById('gid').value = config.id;
+/* ================= DATABASE & STATE ================= */
+let db = JSON.parse(localStorage.getItem("manganest_v5")) || {
+  users: [
+    {id: "u1", name: "Simone", color: "#0984e3", groupId: "default"},
+    {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}
+  ],
+  groups: [{id: "default", name: "Casa"}],
+  currentUser: null,
+  sagas: [], series: [], volumes: [], read: [],
+  cloud: { token: "", gistId: "" }
+};
 
-function salva() {
-    config.token = document.getElementById('tk').value.trim();
-    config.id = document.getElementById('gid').value.trim();
-    localStorage.setItem("manga_cloud", JSON.stringify(config));
-    alert("Chiavi salvate localmente!");
+const save = () => localStorage.setItem("manganest_v5", JSON.stringify(db));
+const app = document.getElementById("app");
+const menu = document.getElementById("menu");
+const who = document.getElementById("who");
+const switchBtn = document.getElementById("switchUser");
+
+let edMode = "ALL";
+let edSagaFilter = ""; 
+
+switchBtn.onclick = () => { db.currentUser = null; save(); render(); };
+
+function getActiveGroup() {
+    const u = db.users.find(u => u.id === db.currentUser);
+    return u ? u.groupId : "default";
 }
 
-async function test(mode) {
-    const s = document.getElementById('stat');
-    s.style.display = "block";
-    s.style.background = "#eee";
-    s.textContent = "Connessione in corso...";
-
-    const token = config.token;
-    const gistId = config.id;
+/* ================= CLOUD SYNC LOGIC ================= */
+async function syncCloud(mode) {
+    if (!db.cloud || !db.cloud.token || !db.cloud.gistId) {
+        alert("Configura prima le chiavi nel menu Cloud.");
+        return;
+    }
+    
+    const tk = db.cloud.token.trim();
+    const gid = db.cloud.gistId.trim();
+    const btn = document.getElementById("syncBtnMain");
+    if(btn) btn.disabled = true;
 
     try {
-        if(mode === 'UPLOAD') {
-            const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        if (mode === 'UPLOAD') {
+            const res = await fetch(`https://api.github.com/gists/${gid}`, {
                 method: 'PATCH',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github+json'
-                },
-                body: JSON.stringify({
-                    files: { "data.json": { content: JSON.stringify({test: "funziona", date: new Date()}) } }
-                })
+                headers: { 'Authorization': `Bearer ${tk}`, 'Accept': 'application/vnd.github+json' },
+                body: JSON.stringify({ files: { "data.json": { content: JSON.stringify(db) } } })
             });
-
-            if(res.ok) {
-                s.style.background = "#dff9fb";
-                s.textContent = "✅ TOKEN VALIDO! L'invio ha funzionato.";
-            } else {
-                const err = await res.json();
-                s.style.background = "#fab1a0";
-                s.textContent = "❌ ERRORE: " + err.message + " (Controlla il Token!)";
-            }
+            if (res.ok) alert("✅ Dati inviati al Cloud!");
+            else { const e = await res.json(); alert("Errore: " + e.message); }
         } else {
-            const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch(`https://api.github.com/gists/${gid}?t=${Date.now()}`, {
+                headers: { 'Authorization': `Bearer ${tk}` },
+                cache: 'no-store'
             });
-            if(res.ok) {
-                s.style.background = "#dff9fb";
-                s.textContent = "✅ TOKEN VALIDO! Il download ha funzionato.";
-            } else {
-                const err = await res.json();
-                s.textContent = "❌ ERRORE: " + err.message;
-            }
+            if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+            const data = await res.json();
+            db = JSON.parse(data.files["data.json"].content);
+            save(); render();
+            alert("✅ Dati scaricati e aggiornati!");
         }
-    } catch (e) {
-        s.textContent = "❌ Errore di rete: " + e.message;
-    }
+    } catch (e) { alert("❌ Errore Cloud: " + e.message); }
+    finally { if(btn) btn.disabled = false; }
 }
+
+function showCloudMenu() {
+    app.innerHTML = `
+        <h2 class="section-title">Cloud Sync</h2>
+        <div class="card">
+            <button class="ok" style="width:100%; margin-bottom:10px" onclick="syncCloud('UPLOAD')">⬆️ Invia al Cloud</button>
+            <button class="ok" style="width:100%; background:#00b894; margin-bottom:15px" onclick="syncCloud('DOWNLOAD')">⬇️ Scarica dal Cloud</button>
+            <hr>
+            <p><b>Impostazioni GitHub:</b></p>
+            <input id="clToken" type="password" placeholder="Token (ghp_...)" value="${db.cloud.token}">
+            <input id="clId" placeholder="Gist ID" value="${db.cloud.gistId}">
+            <button class="ok" style="width:100%; background:#636e72" onclick="saveCloudSettings()">Salva Chiavi</button>
+            <button class="danger" style="width:100%; margin-top:10px; font-size:11px" onclick="resetCloud()">Reset Chiavi</button>
+        </div>`;
+}
+
+window.saveCloudSettings = () => {
+    db.cloud.token = document.getElementById("clToken").value.trim();
+    db.cloud.gistId = document.getElementById("clId").value.trim();
+    save(); alert("Chiavi salvate!"); render();
+}
+window.resetCloud = () => { if(confirm("Resettare le chiavi?")) { db.cloud={token:"",gistId:""}; save(); showCloudMenu(); } }
+
+/* ================= RENDER & TABS ================= */
+function render(){
+  const u = db.users.find(u => u.id === db.currentUser);
+  if(u) document.documentElement.style.setProperty("--main", u.color);
+  who.textContent = u ? `Ciao, ${u.name}` : "";
+  const group = db.groups.find(g => g.id === (u?.groupId || "default"));
+  document.getElementById("groupLabel").textContent = u ? `[${group.name}]` : "";
+  switchBtn.style.display = u ? "inline" : "none";
+  menu.innerHTML = "";
+  if(!db.currentUser){ home(); return; }
+  
+  [["Database",searchDB],["Edicola",edicolaTab],["Lettura",readTab],["Aggiungi",addVolumes],["Serie",addSeries],["Utenti",users]].forEach(([t,f])=>{
+    const b = document.createElement("button");
+    b.textContent = t; b.onclick = () => f(app); menu.appendChild(b);
+  });
+
+  const cb = document.createElement("button");
+  cb.id = "syncBtnMain"; cb.textContent = "☁️ Cloud";
+  cb.style.background = "#2d3436"; cb.style.color = "white";
+  cb.onclick = showCloudMenu;
+  menu.appendChild(cb);
+  searchDB(app);
+}
+
+function home(){
+  app.innerHTML = "<h3 style='text-align:center'>Seleziona Profilo</h3><div id='userList' style='display:flex; justify-content:center; flex-wrap:wrap; gap:10px'></div>";
+  db.users.forEach(u=>{
+    const b = document.createElement("button");
+    b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px 30px";
+    b.onclick = () => { db.currentUser = u.id; save(); render(); };
+    document.getElementById('userList').appendChild(b);
+  });
+}
+
+/* --- EDICOLA --- */
+function edicolaTab(c){
+  const gid = getActiveGroup();
+  const activeSeries = db.series.filter(sr => sr.groupId === gid);
+  const activeSagaIds = [...new Set(activeSeries.map(s => s.sagaId))];
+  const activeSagas = db.sagas.filter(sg => activeSagaIds.includes(sg.id)).sort((a,b)=>a.name.localeCompare(b.name));
+
+  c.innerHTML = `<h2 class="section-title">Edicola</h2><div class="filter-bar"><button class="${edMode==='ALL'?'active':''}" onclick="setEdMode('ALL')">Tutto</button><button class="${edMode==='GAPS'?'active':''}" onclick="setEdMode('GAPS')">Solo Mancanti</button><select onchange="setEdSaga(this.value)"><option value="">Tutte le Saghe</option>${activeSagas.map(s => `<option value="${s.id}" ${edSagaFilter===s.id?'selected':''}>${s.name}</option>`).join('')}</select></div><div id="edicolaList"></div>`;
+  renderEdicolaList();
+}
+window.setEdMode = (m) => { edMode = m; edicolaTab(app); }
+window.setEdSaga = (id) => { edSagaFilter = id; edicolaTab(app); }
+window.renderEdicolaList = () => {
+    const gid = getActiveGroup(); const user = db.users.find(u => u.id === db.currentUser);
+    let series = db.series.filter(s => s.groupId === gid);
+    if(edSagaFilter) series = series.filter(s => s.sagaId === edSagaFilter);
+    series.sort((a,b)=>a.name.localeCompare(b.name));
+    let h = "";
+    series.forEach(sr => {
+        const groupVols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number).sort((a,b)=>a-b);
+        let gaps = []; let next = null; const max = groupVols.length > 0 ? Math.max(...groupVols) : 0;
+        for(let i=1; i<max; i++) if(!groupVols.includes(i)) gaps.push(i);
+        if(edMode !== "GAPS" && (sr.status === "In Corso" || max === 0)) next = max + 1;
+        if(gaps.length > 0 || next) {
+            const saga = db.sagas.find(sg => sg.id === sr.sagaId);
+            h += `<div class="card"><div class="row-edit" style="border:none;padding:0"><img src="${sr.img}" class="cover-big"><div style="flex:1"><div style="display:flex;justify-content:space-between"><b>${saga?saga.name+' - ':''}${sr.name}</b><span class="buy-tag">DA PRENDERE</span></div><p class="small">${sr.publisher}</p><div style="display:flex;flex-wrap:wrap;margin-top:10px">${gaps.map(n => `<div class="vol-container"><span class="volumeStatic" style="border-color:${user.color};color:${user.color}">${n}</span><span class="m-label" style="color:${user.color}">M</span></div>`).join('')}${next ? `<div class="vol-container"><span class="volumeStatic" style="border-color:#27ae60;color:#333">${next}</span><span class="m-label" style="color:#27ae60">NEW</span></div>` : ''}</div></div></div></div>`;
+        }
+    });
+    document.getElementById("edicolaList").innerHTML = h || `<div class="card">Tutto in ordine!</div>`;
+}
+
+/* --- CATALOGO --- */
+function searchDB(c){
+  const gid=getActiveGroup(); const fSagas=db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><select id="searchSaga" onchange="doSearch()"><option value="">Tutto (A-Z)</option>${fSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="searchRes"></div>`;
+  doSearch();
+}
+window.doSearch=()=>{
+  const sid=document.getElementById("searchSaga").value; const gid=getActiveGroup();
+  let fSagas=sid?db.sagas.filter(s=>s.id===sid):db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById("searchRes").innerHTML=fSagas.map(sg=>{ 
+      const sS=db.series.filter(r=>r.sagaId===sg.id).sort((a,b)=>a.name.localeCompare(b.name)); if(sS.length===0) return "";
+      return `<div class="card"><h3 style="color:var(--main)">${sg.name}</h3>${sS.map(sr=>{ 
+          const aN=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===gid).map(v=>v.number).sort((a,b)=>a-b); 
+          return `<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div><b style="font-size:20px">${sr.name}</b><br><span class="small">${sr.authors} | ${sr.publisher}</span><br><div style="margin-top:10px">${aN.map(n=>`<span class="volumeStatic" style="margin:2px">${n}</span>`).join('')}</div></div></div>`; 
+      }).join('')}</div>`; 
+  }).join('');
+}
+
+/* --- LETTURA --- */
+function readTab(c){
+  const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML=`<h2 class="section-title">Lettura</h2><div class="card"><select id="readSagaSelect" onchange="renderReadList()"><option value="">-- Seleziona Saga --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="readArea"></div>`;
+}
+window.renderReadList=()=>{
+  const sagaId=document.getElementById("readSagaSelect").value; if(!sagaId)return;
+  const user=db.users.find(u=>u.id===db.currentUser); const groupMembers = db.users.filter(u => u.groupId === user.groupId);
+  document.getElementById("readArea").innerHTML=db.series.filter(s=>s.sagaId===sagaId).sort((a,b)=>a.name.localeCompare(b.name)).map(sr=>{
+    const myGroupVols=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===user.groupId).sort((a,b)=>a.number-b.number);
+    return `<div class="card"><div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><div style="flex:1"><h3>${sr.name}</h3><div style="display:flex;flex-wrap:wrap;margin-top:10px">${myGroupVols.map(v=>{
+            const amIRead=db.read.some(r=>r.volId===v.id && r.userId===user.id);
+            const dots = groupMembers.map(m => db.read.some(r => r.volId === v.id && r.userId === m.id) ? `<span class="dot" style="background-color:${m.color}"></span>` : '').join('');
+            return `<div class="vol-container"><button class="volumeStatic" style="cursor:pointer; ${amIRead?`background:${user.color};color:white;border:none`:''}" onclick="toggleRead('${v.id}')">${v.number}</button><div class="read-indicators">${dots}</div></div>`;
+    }).join('')}</div></div></div>`;
+  }).join('');
+}
+window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
+
+/* --- AGGIUNGI & GESTIONE --- */
+function addVolumes(c){
+  const gid = getActiveGroup(); const series = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><select id="vSerie" onchange="showUserVols()"><option value="">-- Seleziona Serie --</option>${series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="seriePreview"></div><div id="vInputArea" style="display:none"><input type="number" id="vStart" placeholder="Da"><input type="number" id="vEnd" placeholder="A"><button class="ok" style="width:100%" onclick="saveVols()">Aggiungi</button></div><div id="vList"></div></div>`;
+}
+function showUserVols(){
+  const sid=document.getElementById("vSerie").value; if(!sid)return; const sr=db.series.find(x=>x.id===sid);
+  document.getElementById("vInputArea").style.display="block";
+  document.getElementById("seriePreview").innerHTML=`<div class="row-edit" style="border:none"><img src="${sr.img}" class="cover-big"><h3>${sr.name}</h3></div>`;
+  const gV=db.volumes.filter(v=>v.seriesId===sid && v.groupId===getActiveGroup()).sort((a,b)=>a.number-b.number);
+  document.getElementById("vList").innerHTML=`<div style="margin-top:10px">${gV.map(v=>`<button style="margin:2px" onclick="removeVol('${v.id}')">${v.number}</button>`).join('')}</div>`;
+}
+window.removeVol=(id)=>{ db.volumes=db.volumes.filter(v=>v.id!==id); save(); showUserVols(); }
+
+function addSeries(c){
+  const gid = getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
+  c.innerHTML = `<h2 class="section-title">Gestione Serie</h2><div class="card"><h3>Crea Saga</h3><input id="sagaNameOnly"><button class="ok" onclick="createSagaOnly()">Crea</button></div><div class="card"><h3>Aggiungi Serie</h3><input id="nsTitolo" placeholder="Titolo"><select id="nsSagaSelect"><option value="NEW">Nuova Saga</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><input id="nsAutore" placeholder="Autore"><input id="nsEditore" placeholder="Editore"><input id="nsImg" placeholder="URL Immagine"><button class="ok" onclick="createSerieFull()">Salva</button></div>`;
+}
+window.createSagaOnly=()=>{ const n=document.getElementById("sagaNameOnly").value; if(!n)return; db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app); }
+window.createSerieFull=()=>{ const name=document.getElementById("nsTitolo").value; if(!name)return; let sagaId=document.getElementById("nsSagaSelect").value; const gid=getActiveGroup(); if(sagaId==="NEW"){ const ns={id:crypto.randomUUID(), name, groupId:gid}; db.sagas.push(ns); sagaId=ns.id; } db.series.push({id:crypto.randomUUID(), name, sagaId, groupId:gid, authors:document.getElementById("nsAutore").value, publisher:document.getElementById("nsEditore").value, img:document.getElementById("nsImg").value, status:"In Corso"}); save(); addSeries(app); }
+
+function users(c){
+  c.innerHTML = "<h2 class='section-title'>Profili</h2>";
+  db.users.forEach(u => { c.innerHTML += `<div class="card">${u.name} <input type="color" value="${u.color}" onchange="updateCol('${u.id}',this.value)"></div>`; });
+}
+window.updateCol=(id,v)=>{ db.users.find(u=>u.id===id).color=v; save(); render(); }
+window.saveVols=()=>{
+  const sid=document.getElementById("vSerie").value, start=Number(document.getElementById("vStart").value), end=Number(document.getElementById("vEnd").value)||start;
+  const gid=getActiveGroup(); for(let i=start;i<=end;i++){ if(!db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, userId:db.currentUser, groupId:gid}); }
+  save(); showUserVols();
+}
+
+render();
 </script>
 </body>
 </html>
