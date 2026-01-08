@@ -3,219 +3,255 @@
 <head>
 <meta charset="UTF-8">
 <title>MangaNest</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body { font-family: Arial, sans-serif; background: #f0f0f0; margin:0; padding:0;}
-header { background: #333; color: white; padding: 10px; display:flex; gap:10px; flex-wrap:wrap;}
-header button { padding: 5px 10px; border:none; border-radius:4px; cursor:pointer; color:white;}
-header button.active { background: #555; }
-section { padding: 15px; }
-.series-box, .saga-box, .volume-box { background:white; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc; }
-button.red { background:red; color:white;}
-button.green { background:green; color:white;}
-button.yellow { background:goldenrod; color:white;}
+:root{--main:#6c5ce7;--bg:#f5f6fa;}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);}
+header{background:var(--main);color:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;}
+nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;}
+nav button{height:42px;border:none;border-radius:6px;padding:0 16px;cursor:pointer;}
+main{padding:12px;}
+.card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;}
+.row{display:flex;gap:10px;align-items:center;margin:6px 0;}
+.cover{width:50px;height:70px;object-fit:cover;border-radius:4px;background:#ccc;}
+.volumes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.volume{padding:6px 10px;border-radius:6px;background:#eee;}
+.ok{background:var(--main);color:#fff;}
+select,input{width:100%;padding:6px;margin:6px 0;}
 </style>
 </head>
 <body>
 
-<header id="menu"></header>
-<section id="content"></section>
+<header>
+  <div>
+    <h1 style="margin:0">MangaNest</h1>
+    <div id="who"></div>
+  </div>
+  <button id="switchUser" style="display:none">Cambia utente</button>
+</header>
+
+<nav id="menu"></nav>
+<main id="app"></main>
 
 <script>
-let currentReader = null;
-let currentSection = "Menu";
+let db = JSON.parse(localStorage.getItem("manganest")) || {
+  users: [
+    {id:"simone",name:"Simone",color:"#6c5ce7"},
+    {id:"andrea",name:"Andrea",color:"#e84393"}
+  ],
+  currentUser:null,
+  sagas:[],
+  series:[],
+  volumes:[]
+};
 
-const readers = [
-  {name:"Simone", color:"green"},
-  {name:"Andrea", color:"yellow"}
-];
+function save(){ localStorage.setItem("manganest",JSON.stringify(db)); }
 
-const sagas = [];
-const series = [];
+const app=document.getElementById("app");
+const menu=document.getElementById("menu");
+const who=document.getElementById("who");
+const switchBtn=document.getElementById("switchUser");
 
-// ------- FUNZIONI MENU -------
-function renderMenu() {
-  const menuDiv = document.getElementById('menu');
-  menuDiv.innerHTML = '';
-  const sections = ["Menu","Lettura","Edicola","Database","Saghe","Backup CSV"];
-  sections.forEach(sec => {
-    const btn = document.createElement('button');
-    btn.textContent = sec;
-    btn.className = (currentSection===sec) ? 'active' : '';
-    btn.onclick = () => { currentSection=sec; renderContent(); renderMenu(); };
-    menuDiv.appendChild(btn);
+switchBtn.onclick=()=>{ db.currentUser=null; render(); };
+
+function render(){
+  const user=db.users.find(u=>u.id===db.currentUser);
+  document.documentElement.style.setProperty("--main", user?.color || "#6c5ce7");
+  who.textContent=user ? "Utente: "+user.name : "";
+  switchBtn.style.display=user?"inline-block":"none";
+
+  menu.innerHTML="";
+  if(!db.currentUser){ home(); return; }
+
+  [
+    ["Database",database],
+    ["Aggiungi numeri",addVolumes],
+    ["Utenti",users],
+    ["Lettura",reading]
+  ].forEach(([t,f])=>{
+    const b=document.createElement("button");
+    b.textContent=t;
+    b.onclick=()=>f(app);
+    menu.appendChild(b);
   });
+
+  database(app);
 }
 
-// ------- FUNZIONI SEZIONI -------
-function renderContent() {
-  const content = document.getElementById('content');
-  content.innerHTML = '';
-
-  // Selezione reader all'avvio
-  if(!currentReader){
-    const h1 = document.createElement('h1'); h1.textContent="Chi sta usando l'app?"; h1.style.textAlign="center";
-    content.appendChild(h1);
-    readers.forEach(r=>{
-      const btn = document.createElement('button');
-      btn.textContent = r.name; 
-      btn.style.background=r.color; 
-      btn.style.color="white";
-      btn.style.margin="5px"; btn.style.padding="10px"; btn.style.border="none"; btn.style.borderRadius="4px";
-      btn.onclick = ()=>{ currentReader=r.name; renderContent(); renderMenu(); };
-      content.appendChild(btn);
+function home(){
+  app.innerHTML="<h2>Scegli utente</h2>";
+  db.users
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(u=>{
+      const b=document.createElement("button");
+      b.textContent=u.name;
+      b.style.background=u.color;
+      b.style.color="#fff";
+      b.style.margin="6px";
+      b.onclick=()=>{ db.currentUser=u.id; save(); render(); };
+      app.appendChild(b);
     });
-    return;
-  }
-
-  switch(currentSection){
-    case "Menu":
-      const h = document.createElement('h2'); h.textContent="Benvenuto "+currentReader; content.appendChild(h);
-      const p = document.createElement('p'); p.textContent="Seleziona una sezione dal menu in alto."; content.appendChild(p);
-      break;
-
-    case "Lettura":
-      renderLettura(content);
-      break;
-    case "Edicola":
-      renderEdicola(content);
-      break;
-    case "Database":
-      renderDatabase(content);
-      break;
-    case "Saghe":
-      renderSaghe(content);
-      break;
-    case "Backup CSV":
-      renderBackup(content);
-      break;
-  }
 }
 
-// ------- LETTURA -------
-function renderLettura(container){
-  const h = document.createElement('h2'); h.textContent="📖 Lettura"; container.appendChild(h);
-  if(series.length===0){ const p=document.createElement('p'); p.textContent="Nessuna serie"; container.appendChild(p); return;}
-  series.forEach((s,sIndex)=>{
-    const div = document.createElement('div'); div.className='series-box';
-    const title = document.createElement('div'); title.style.fontWeight='bold'; title.textContent=s.name+" ("+s.status+")";
-    div.appendChild(title);
-
-    s.volumes.forEach((v,vIndex)=>{
-      const volDiv = document.createElement('div'); volDiv.className='volume-box'; volDiv.style.display='flex'; volDiv.style.justifyContent='space-between'; volDiv.style.alignItems='center';
-
-      const label = document.createElement('label');
-      const checkbox = document.createElement('input'); checkbox.type='checkbox';
-      checkbox.checked = v.read[currentReader] || false;
-      checkbox.onchange = ()=>{ v.read[currentReader] = checkbox.checked; };
-      label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(" Volume "+v.number + (v.isLast?" (Ultimo)":"")));
-      volDiv.appendChild(label);
-
-      const btns = document.createElement('div');
-      const delBtn = document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red'; delBtn.onclick = ()=>{
-        if(confirm("Eliminare volume?")){ s.volumes.splice(vIndex,1); renderContent(); }
+/* ------------------ UTENTI ------------------ */
+function users(c){
+  c.innerHTML="<h2>Utenti</h2>";
+  db.users
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(u=>{
+      const d=document.createElement("div");
+      d.className="card";
+      d.innerHTML=`
+        <input value="${u.name}">
+        <input type="color" value="${u.color}">
+        <button class="ok">Salva</button>
+      `;
+      d.querySelector(".ok").onclick=()=>{
+        u.name=d.querySelector("input").value.trim();
+        u.color=d.querySelector("input[type=color]").value;
+        save(); render();
       };
-      const lastBtn = document.createElement('button'); lastBtn.textContent='Ultimo'; lastBtn.className='yellow'; lastBtn.onclick = ()=>{
-        s.volumes.forEach(vv=>vv.isLast=false); s.volumes[vIndex].isLast=true; s.status="finita"; renderContent();
-      };
-      btns.appendChild(delBtn); btns.appendChild(lastBtn);
-      btns.style.display='flex'; btns.style.gap='5px';
-      volDiv.appendChild(btns);
-
-      div.appendChild(volDiv);
+      c.appendChild(d);
     });
-
-    const markAllBtn = document.createElement('button'); markAllBtn.textContent='Segna tutta letta'; markAllBtn.className='green';
-    markAllBtn.onclick = ()=>{ s.volumes.forEach(v=>v.read[currentReader]=true); renderContent(); };
-    div.appendChild(markAllBtn);
-
-    container.appendChild(div);
-  });
 }
 
-// ------- EDICOLA -------
-function renderEdicola(container){
-  const h = document.createElement('h2'); h.textContent="🏪 Edicola - Volumi mancanti"; container.appendChild(h);
-  let missing=false;
-  series.forEach(s=>{
-    const miss = s.volumes.filter(v=>!Object.values(v.read).every(r=>r===true));
-    if(miss.length>0){ missing=true;
-      const div=document.createElement('div'); div.innerHTML="<strong>"+s.name+"</strong>: "+miss.map(v=>v.number).join(", "); container.appendChild(div);
+/* ------------------ DATABASE ------------------ */
+function database(c){
+  c.innerHTML="<h2>Database</h2>";
+
+  const sagaBox=document.createElement("div");
+  sagaBox.className="card";
+  sagaBox.innerHTML=`
+    <h3>Nuova saga</h3>
+    <input id="newSaga">
+    <button class="ok">Aggiungi</button>
+  `;
+  sagaBox.querySelector("button").onclick=()=>{
+    const n=sagaBox.querySelector("input").value.trim();
+    if(n && !db.sagas.find(s=>s.name===n)){
+      db.sagas.push({id:crypto.randomUUID(),name:n});
+      save(); render();
     }
-  });
-  if(!missing){ const p=document.createElement('p'); p.textContent="Tutto aggiornato!"; container.appendChild(p); }
-}
-
-// ------- DATABASE -------
-function renderDatabase(container){
-  const h = document.createElement('h2'); h.textContent="🗄️ Database"; container.appendChild(h);
-
-  const sagaInput = document.createElement('input'); sagaInput.placeholder="Nuova saga";
-  const sagaBtn = document.createElement('button'); sagaBtn.textContent="+ Saga"; sagaBtn.onclick=()=>{
-    if(sagaInput.value.trim()){ sagas.push({name:sagaInput.value}); sagaInput.value=''; renderContent(); }
   };
-  container.appendChild(sagaInput); container.appendChild(sagaBtn);
+  c.appendChild(sagaBox);
 
-  const seriesInput = document.createElement('input'); seriesInput.placeholder="Nuova serie";
-  const seriesBtn = document.createElement('button'); seriesBtn.textContent="+ Serie"; seriesBtn.onclick=()=>{
-    if(seriesInput.value.trim()){ series.push({name:seriesInput.value,status:"in corso",volumes:[],saga:null}); seriesInput.value=''; renderContent(); }
+  const seriesBox=document.createElement("div");
+  seriesBox.className="card";
+  seriesBox.innerHTML=`
+    <h3>Nuova serie</h3>
+    <input id="sn" placeholder="Nome serie">
+    <select id="ss">
+      <option value="">Nessuna saga</option>
+      ${db.sagas.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
+    </select>
+    <button class="ok">Aggiungi</button>
+  `;
+  seriesBox.querySelector("button").onclick=()=>{
+    const name=seriesBox.querySelector("#sn").value.trim();
+    if(!name) return;
+    let sagaId=seriesBox.querySelector("#ss").value;
+    if(!sagaId){
+      const sg={id:crypto.randomUUID(),name};
+      db.sagas.push(sg);
+      sagaId=sg.id;
+    }
+    db.series.push({id:crypto.randomUUID(),name,sagaId});
+    save(); render();
   };
-  container.appendChild(document.createElement('br'));
-  container.appendChild(seriesInput); container.appendChild(seriesBtn);
-
-  // Mostra saghe
-  const sH = document.createElement('h3'); sH.textContent="Saghe:"; container.appendChild(sH);
-  sagas.forEach((s,i)=>{
-    const div=document.createElement('div'); div.className='saga-box';
-    div.textContent=s.name;
-    const delBtn=document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red';
-    delBtn.onclick = ()=>{ if(confirm("Eliminare saga?")){ sagas.splice(i,1); renderContent(); } };
-    div.appendChild(delBtn);
-    container.appendChild(div);
-  });
-
-  // Mostra serie
-  const srH = document.createElement('h3'); srH.textContent="Serie:"; container.appendChild(srH);
-  series.forEach((s,i)=>{
-    const div=document.createElement('div'); div.className='series-box';
-    div.textContent=s.name + " ("+(s.saga||"nessuna saga")+")";
-    const delBtn=document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red';
-    delBtn.onclick = ()=>{ if(confirm("Eliminare serie?")){ series.splice(i,1); renderContent(); } };
-    div.appendChild(delBtn);
-    container.appendChild(div);
-  });
+  c.appendChild(seriesBox);
 }
 
-// ------- SAGHE -------
-function renderSaghe(container){
-  const h=document.createElement('h2'); h.textContent="📚 Saghe"; container.appendChild(h);
-  if(sagas.length===0){ const p=document.createElement('p'); p.textContent="Nessuna saga"; container.appendChild(p); return; }
-  sagas.forEach((s,i)=>{
-    const div=document.createElement('div'); div.className='saga-box'; div.textContent=s.name;
-    const delBtn=document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='red';
-    delBtn.onclick = ()=>{ if(confirm("Eliminare saga?")){ sagas.splice(i,1); renderContent(); } };
-    div.appendChild(delBtn);
-    container.appendChild(div);
-  });
-}
+/* ------------------ AGGIUNGI VOLUMI ------------------ */
+function addVolumes(c){
+  c.innerHTML="<h2>Aggiungi numeri</h2>";
+  if(!db.series.length){ c.innerHTML+="<p>Nessuna serie</p>"; return; }
 
-// ------- BACKUP CSV -------
-function renderBackup(container){
-  const h=document.createElement('h2'); h.textContent="📦 Backup CSV"; container.appendChild(h);
-  const btn=document.createElement('button'); btn.textContent="Scarica CSV"; btn.className='green';
-  btn.onclick=()=>{
-    let csv = series.map(s=>s.volumes.map(v=>s.name+","+v.number+","+Object.keys(v.read).filter(r=>v.read[r]).join("|")+","+s.status).join("\n")).join("\n");
-    const blob = new Blob([csv],{type:"text/csv"});
-    const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download="manga_backup.csv"; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  const box=document.createElement("div");
+  box.className="card";
+  box.innerHTML=`
+    <select id="s">
+      ${db.series.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
+    </select>
+    <input id="from" type="number" placeholder="Dal numero">
+    <input id="to" type="number" placeholder="Al numero">
+    <button class="ok">Aggiungi</button>
+  `;
+  box.querySelector("button").onclick=()=>{
+    const sid=box.querySelector("#s").value;
+    let a=+box.querySelector("#from").value;
+    let b=+box.querySelector("#to").value || a;
+    for(let i=a;i<=b;i++){
+      if(!db.volumes.find(v=>v.series===sid && v.number===i))
+        db.volumes.push({series:sid,number:i});
+    }
+    save(); alert("Volumi aggiunti");
   };
-  container.appendChild(btn);
+  c.appendChild(box);
 }
 
-// ------- INIZIALIZZAZIONE -------
-renderMenu();
-renderContent();
+/* ------------------ LETTURA (STEP 1) ------------------ */
+function reading(c){
+  c.innerHTML="<h2>Lettura</h2>";
 
+  const box=document.createElement("div");
+  box.className="card";
+  box.innerHTML=`
+    <label>Saga (opzionale)</label>
+    <select id="sagaSel">
+      <option value="">-- Tutte le saghe --</option>
+      ${db.sagas.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
+    </select>
+
+    <label>Serie</label>
+    <select id="seriesSel">
+      <option value="">-- Seleziona serie --</option>
+    </select>
+
+    <div id="result"></div>
+  `;
+  c.appendChild(box);
+
+  const sagaSel=box.querySelector("#sagaSel");
+  const seriesSel=box.querySelector("#seriesSel");
+  const result=box.querySelector("#result");
+
+  function refreshSeries(){
+    const sid=sagaSel.value;
+    let list=db.series;
+    if(sid) list=list.filter(s=>s.sagaId===sid);
+    seriesSel.innerHTML="<option value=''>-- Seleziona serie --</option>"+
+      list.slice().sort((a,b)=>a.name.localeCompare(b.name))
+        .map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+    result.innerHTML="";
+  }
+
+  function showVolumes(){
+    result.innerHTML="";
+    const sid=seriesSel.value;
+    if(!sid) return;
+    const vols=db.volumes
+      .filter(v=>v.series===sid)
+      .sort((a,b)=>a.number-b.number);
+    const div=document.createElement("div");
+    div.className="volumes";
+    vols.forEach(v=>{
+      const b=document.createElement("div");
+      b.className="volume";
+      b.textContent=v.number;
+      div.appendChild(b);
+    });
+    result.appendChild(div);
+  }
+
+  sagaSel.onchange=refreshSeries;
+  seriesSel.onchange=showVolumes;
+
+  refreshSeries();
+}
+
+render();
 </script>
-
 </body>
 </html>
