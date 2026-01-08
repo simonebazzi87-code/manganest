@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>MangaNest - Cloud Final</title>
+<title>MangaNest - Checkpoint Cloud</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--main:#6c5ce7;}
@@ -41,15 +41,14 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 <main id="app"></main>
 
 <script>
-/* ================= DATABASE & STATE ================= */
+/* ================= DATABASE & INITIALIZATION ================= */
 let db = JSON.parse(localStorage.getItem("manganest_v5")) || {
   users: [
     {id: "u1", name: "Simone", color: "#0984e3", groupId: "default"},
     {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}
   ],
   groups: [{id: "default", name: "Casa"}],
-  currentUser: null,
-  sagas: [], series: [], volumes: [], read: [],
+  currentUser: null, sagas: [], series: [], volumes: [], read: [],
   cloud: { token: "", gistId: "" }
 };
 
@@ -69,14 +68,14 @@ function getActiveGroup() {
     return u ? u.groupId : "default";
 }
 
-/* ================= CLOUD SYNC LOGIC (PULIZIA AUTOMATICA) ================= */
+/* ================= CLOUD LOGIC (CON FIX SPAZI) ================= */
 async function syncCloud(mode) {
     if (!db.cloud || !db.cloud.token || !db.cloud.gistId) {
         alert("Configura prima le chiavi nel menu Cloud.");
         return;
     }
     
-    // Rimuove spazi vuoti che il telefono aggiunge spesso a fine riga
+    // Rimuove ogni spazio possibile prima dell'invio (sicurezza extra)
     const tk = db.cloud.token.replace(/\s/g, '');
     const gid = db.cloud.gistId.replace(/\s/g, '');
     const btn = document.getElementById("syncBtnMain");
@@ -89,7 +88,7 @@ async function syncCloud(mode) {
                 headers: { 'Authorization': `Bearer ${tk}`, 'Accept': 'application/vnd.github+json' },
                 body: JSON.stringify({ files: { "data.json": { content: JSON.stringify(db) } } })
             });
-            if (res.ok) alert("✅ Dati inviati al Cloud!");
+            if (res.ok) alert("✅ Dati inviati correttamente!");
             else { const e = await res.json(); alert("Errore: " + e.message); }
         } else {
             const res = await fetch(`https://api.github.com/gists/${gid}?t=${Date.now()}`, {
@@ -100,7 +99,7 @@ async function syncCloud(mode) {
             const data = await res.json();
             db = JSON.parse(data.files["data.json"].content);
             save(); render();
-            alert("✅ Dati scaricati e aggiornati!");
+            alert("✅ Sincronizzazione completata!");
         }
     } catch (e) { alert("❌ Errore Cloud: " + e.message); }
     finally { if(btn) { btn.disabled = false; btn.textContent = "☁️ Cloud"; } }
@@ -108,28 +107,33 @@ async function syncCloud(mode) {
 
 function showCloudMenu() {
     app.innerHTML = `
-        <h2 class="section-title">Cloud Sync</h2>
+        <h2 class="section-title">Impostazioni Cloud</h2>
         <div class="card">
             <button class="ok" style="width:100%; margin-bottom:10px" onclick="syncCloud('UPLOAD')">⬆️ Invia al Cloud</button>
             <button class="ok" style="width:100%; background:#00b894; margin-bottom:15px" onclick="syncCloud('DOWNLOAD')">⬇️ Scarica dal Cloud</button>
             <hr>
-            <p><b>Impostazioni GitHub:</b></p>
-            <input id="clToken" type="password" placeholder="Token (ghp_...)" value="${db.cloud.token}">
+            <p><b>Configurazione:</b></p>
+            <div style="display:flex; gap:5px">
+                <input id="clToken" type="password" placeholder="GitHub Token" value="${db.cloud.token}">
+                <button onclick="document.getElementById('clToken').type=(document.getElementById('clToken').type==='password'?'text':'password')" style="width:45px; margin:5px 0; border-radius:6px; border:1px solid #ccc">👁️</button>
+            </div>
             <input id="clId" placeholder="Gist ID" value="${db.cloud.gistId}">
-            <button class="ok" style="width:100%; background:#636e72" onclick="saveCloudSettings()">Salva Chiavi</button>
+            <button class="ok" style="width:100%; background:#636e72" onclick="saveCloudSettings()">Salva e Pulisci Chiavi</button>
             <button class="danger" style="width:100%; margin-top:10px; font-size:11px" onclick="resetCloud()">Reset Chiavi</button>
         </div>`;
 }
 
 window.saveCloudSettings = () => {
-    // La pulizia avviene qui al salvataggio
+    // Rimuove spazi, a capo e tabulazioni al momento del salvataggio
     db.cloud.token = document.getElementById("clToken").value.replace(/\s/g, '');
     db.cloud.gistId = document.getElementById("clId").value.replace(/\s/g, '');
-    save(); alert("Chiavi salvate e pulite da spazi!"); render();
+    save(); 
+    alert("Chiavi salvate! Gli spazi extra sono stati rimossi automaticamente."); 
+    render();
 }
-window.resetCloud = () => { if(confirm("Resettare le chiavi?")) { db.cloud={token:"",gistId:""}; save(); showCloudMenu(); } }
+window.resetCloud = () => { if(confirm("Cancellare le chiavi?")) { db.cloud={token:"",gistId:""}; save(); showCloudMenu(); } }
 
-/* ================= TUTTE LE ALTRE FUNZIONI ================= */
+/* ================= FUNZIONI CORE (CHECKPOINT) ================= */
 function render(){
   const u = db.users.find(u => u.id === db.currentUser);
   if(u) document.documentElement.style.setProperty("--main", u.color);
@@ -140,7 +144,7 @@ function render(){
   menu.innerHTML = "";
   if(!db.currentUser){ home(); return; }
   
-  [["Database",searchDB],["Edicola",edicolaTab],["Lettura",readTab],["Aggiungi",addVolumes],["Serie",addSeries],["Utenti",users]].forEach(([t,f])=>{
+  [["Database",searchDB],["Edicola",edicolaTab],["Lettura",readTab],["Aggiungi",addVolumes],["Serie",addSeries]].forEach(([t,f])=>{
     const b = document.createElement("button");
     b.textContent = t; b.onclick = () => f(app); menu.appendChild(b);
   });
@@ -154,7 +158,7 @@ function render(){
 }
 
 function home(){
-  app.innerHTML = "<h3 style='text-align:center'>Seleziona Profilo</h3><div id='userList' style='display:flex; justify-content:center; flex-wrap:wrap; gap:10px'></div>";
+  app.innerHTML = "<h3 style='text-align:center;margin-top:50px'>Chi sta usando MangaNest?</h3><div id='userList' style='display:flex; justify-content:center; flex-wrap:wrap; gap:10px'></div>";
   db.users.forEach(u=>{
     const b = document.createElement("button");
     b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px 30px";
@@ -247,11 +251,6 @@ function addSeries(c){
 window.createSagaOnly=()=>{ const n=document.getElementById("sagaNameOnly").value; if(!n)return; db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app); }
 window.createSerieFull=()=>{ const name=document.getElementById("nsTitolo").value; if(!name)return; let sagaId=document.getElementById("nsSagaSelect").value; const gid=getActiveGroup(); if(sagaId==="NEW"){ const ns={id:crypto.randomUUID(), name, groupId:gid}; db.sagas.push(ns); sagaId=ns.id; } db.series.push({id:crypto.randomUUID(), name, sagaId, groupId:gid, authors:document.getElementById("nsAutore").value, publisher:document.getElementById("nsEditore").value, img:document.getElementById("nsImg").value, status:"In Corso"}); save(); addSeries(app); }
 
-function users(c){
-  c.innerHTML = "<h2 class='section-title'>Profili</h2>";
-  db.users.forEach(u => { c.innerHTML += `<div class="card">${u.name} <input type="color" value="${u.color}" onchange="updateCol('${u.id}',this.value)"></div>`; });
-}
-window.updateCol=(id,v)=>{ db.users.find(u=>u.id===id).color=v; save(); render(); }
 window.saveVols=()=>{
   const sid=document.getElementById("vSerie").value, start=Number(document.getElementById("vStart").value), end=Number(document.getElementById("vEnd").value)||start;
   const gid=getActiveGroup(); for(let i=start;i<=end;i++){ if(!db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, userId:db.currentUser, groupId:gid}); }
