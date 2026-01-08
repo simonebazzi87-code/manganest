@@ -1,197 +1,272 @@
-<!-- TEST LETTURA STEP 1 - SE VEDI QUESTO È IL FILE GIUSTO -->
-
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <title>MangaNest</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f4f4f4;
-    }
-
-    header {
-      background: #222;
-      color: white;
-      padding: 10px;
-      text-align: center;
-    }
-
-    nav {
-      display: flex;
-      gap: 10px;
-      padding: 10px;
-      background: #ddd;
-    }
-
-    nav button {
-      flex: 1;
-      padding: 10px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    section {
-      display: none;
-      padding: 15px;
-    }
-
-    section.active {
-      display: block;
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
-    select {
-      padding: 6px;
-      margin-right: 10px;
-    }
-
-    .volumi {
-      margin-top: 15px;
-      background: white;
-      padding: 10px;
-      border-radius: 5px;
-    }
-
-    .volume {
-      display: inline-block;
-      padding: 6px 10px;
-      margin: 4px;
-      background: #eee;
-      border-radius: 4px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>MangaNest</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--main:#6c5ce7;--bg:#f5f6fa;}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);}
+header{background:var(--main);color:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;}
+nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;}
+nav button{height:42px;border:none;border-radius:6px;padding:0 16px;cursor:pointer;}
+main{padding:12px;}
+.card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;}
+.row{display:flex;gap:10px;align-items:center;margin:6px 0;}
+.cover{width:50px;height:70px;object-fit:cover;border-radius:4px;background:#ccc;}
+.volumes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.volume{padding:6px 10px;border-radius:6px;background:#eee;}
+select,input{width:100%;padding:6px;margin:6px 0;}
+.ok{background:var(--main);color:#fff;}
+</style>
 </head>
 <body>
 
 <header>
-  <h1>MangaNest</h1>
+  <div>
+    <h1 style="margin:0">MangaNest</h1>
+    <div id="who"></div>
+  </div>
+  <button id="switchUser" style="display:none">Cambia utente</button>
 </header>
 
-<nav>
-  <button onclick="showSection('lettura')">Lettura</button>
-</nav>
-
-<!-- ================= LETTURA ================= -->
-<section id="lettura" class="active">
-  <h2>Lettura</h2>
-
-  <label>
-    Saga:
-    <select id="letturaSaga" onchange="onSagaChange()">
-      <option value="">— Seleziona saga —</option>
-    </select>
-  </label>
-
-  <label>
-    Serie:
-    <select id="letturaSerie" onchange="mostraVolumi()">
-      <option value="">— Seleziona serie —</option>
-    </select>
-  </label>
-
-  <div id="letturaVolumi" class="volumi"></div>
-</section>
+<nav id="menu"></nav>
+<main id="app"></main>
 
 <script>
-/* ================= DATI DI TEST =================
-   (servono solo per verificare che la lettura funzioni)
-   Poi li collegheremo al vero database
-*/
-const data = {
-  saghe: {
-    "Fushigi Yugi": ["Fushigi Yugi", "Genbu Kaiden"],
-    "Seven Deadly Sins": ["Seven Deadly Sins", "Four Knights of the Apocalypse"]
-  },
-  serie: {
-    "Fushigi Yugi": [1,2,3,4,5],
-    "Genbu Kaiden": [1,2,3],
-    "Seven Deadly Sins": [1,2,3,4],
-    "Four Knights of the Apocalypse": [1,2]
-  }
+let db = JSON.parse(localStorage.getItem("manganest")) || {
+  users:[
+    {id:"simone",name:"Simone",color:"#6c5ce7"},
+    {id:"andrea",name:"Andrea",color:"#e84393"}
+  ],
+  currentUser:null,
+  sagas:[],
+  series:[],
+  volumes:[]
 };
 
-/* ================= INIZIALIZZAZIONE ================= */
-initLettura();
+function save(){ localStorage.setItem("manganest",JSON.stringify(db)); }
 
-function initLettura() {
-  const sagaSelect = document.getElementById("letturaSaga");
+const app=document.getElementById("app");
+const menu=document.getElementById("menu");
+const who=document.getElementById("who");
+const switchBtn=document.getElementById("switchUser");
 
-  Object.keys(data.saghe)
-    .sort()
-    .forEach(saga => {
-      const opt = document.createElement("option");
-      opt.value = saga;
-      opt.textContent = saga;
-      sagaSelect.appendChild(opt);
-    });
+switchBtn.onclick=()=>{ db.currentUser=null; render(); };
+
+function render(){
+  const user=db.users.find(u=>u.id===db.currentUser);
+  document.documentElement.style.setProperty("--main", user?.color || "#6c5ce7");
+  who.textContent=user ? "Utente: "+user.name : "";
+  switchBtn.style.display=user?"inline-block":"none";
+
+  menu.innerHTML="";
+  if(!db.currentUser){ home(); return; }
+
+  [
+    ["Database",database],
+    ["Aggiungi numeri",addVolumes],
+    ["Utenti",users],
+    ["Lettura",reading]
+  ].forEach(([t,f])=>{
+    const b=document.createElement("button");
+    b.textContent=t;
+    b.onclick=()=>f(app);
+    menu.appendChild(b);
+  });
+
+  database(app);
 }
 
-/* ================= CAMBIO SAGA ================= */
-function onSagaChange() {
-  const saga = document.getElementById("letturaSaga").value;
-  const serieSelect = document.getElementById("letturaSerie");
-  const volumiDiv = document.getElementById("letturaVolumi");
-
-  serieSelect.innerHTML = `<option value="">— Seleziona serie —</option>`;
-  volumiDiv.innerHTML = "";
-
-  if (!saga) return;
-
-  data.saghe[saga]
+function home(){
+  app.innerHTML="<h2>Scegli utente</h2>";
+  db.users
     .slice()
-    .sort()
-    .forEach(serie => {
-      const opt = document.createElement("option");
-      opt.value = serie;
-      opt.textContent = serie;
-      serieSelect.appendChild(opt);
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(u=>{
+      const b=document.createElement("button");
+      b.textContent=u.name;
+      b.style.background=u.color;
+      b.style.color="#fff";
+      b.style.margin="6px";
+      b.onclick=()=>{ db.currentUser=u.id; save(); render(); };
+      app.appendChild(b);
+    });
+}
+
+/* ------------------ UTENTI ------------------ */
+function users(c){
+  c.innerHTML="<h2>Utenti</h2>";
+  db.users
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(u=>{
+      const d=document.createElement("div");
+      d.className="card";
+      d.innerHTML=`
+        <input value="${u.name}">
+        <input type="color" value="${u.color}">
+        <button class="ok">Salva</button>
+      `;
+      d.querySelector("button").onclick=()=>{
+        u.name=d.querySelector("input").value.trim();
+        u.color=d.querySelector("input[type=color]").value;
+        save(); render();
+      };
+      c.appendChild(d);
+    });
+}
+
+/* ------------------ DATABASE ------------------ */
+function database(c){
+  c.innerHTML="<h2>Database</h2>";
+
+  const sagaBox=document.createElement("div");
+  sagaBox.className="card";
+  sagaBox.innerHTML=`
+    <h3>Nuova saga</h3>
+    <input id="newSaga">
+    <button class="ok">Aggiungi</button>
+  `;
+  sagaBox.querySelector("button").onclick=()=>{
+    const n=sagaBox.querySelector("input").value.trim();
+    if(n && !db.sagas.find(s=>s.name===n)){
+      db.sagas.push({id:crypto.randomUUID(),name:n});
+      save(); render();
+    }
+  };
+  c.appendChild(sagaBox);
+
+  const seriesBox=document.createElement("div");
+  seriesBox.className="card";
+  seriesBox.innerHTML=`
+    <h3>Nuova serie</h3>
+    <input id="sn" placeholder="Nome serie">
+    <select id="ss">
+      <option value="">Nessuna saga</option>
+      ${db.sagas.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
+    </select>
+    <button class="ok">Aggiungi</button>
+  `;
+  seriesBox.querySelector("button").onclick=()=>{
+    const name=seriesBox.querySelector("#sn").value.trim();
+    if(!name) return;
+    let sagaId=seriesBox.querySelector("#ss").value;
+    if(!sagaId){
+      const sg={id:crypto.randomUUID(),name};
+      db.sagas.push(sg);
+      sagaId=sg.id;
+    }
+    db.series.push({id:crypto.randomUUID(),name,sagaId});
+    save(); render();
+  };
+  c.appendChild(seriesBox);
+}
+
+/* ------------------ AGGIUNGI VOLUMI ------------------ */
+function addVolumes(c){
+  c.innerHTML="<h2>Aggiungi numeri</h2>";
+  if(!db.series.length){ c.innerHTML+="<p>Nessuna serie</p>"; return; }
+
+  const box=document.createElement("div");
+  box.className="card";
+  box.innerHTML=`
+    <select id="s">
+      ${db.series.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
+    </select>
+    <input id="from" type="number" placeholder="Dal numero">
+    <input id="to" type="number" placeholder="Al numero">
+    <button class="ok">Aggiungi</button>
+  `;
+  box.querySelector("button").onclick=()=>{
+    const sid=box.querySelector("#s").value;
+    let a=+box.querySelector("#from").value;
+    let b=+box.querySelector("#to").value || a;
+    for(let i=a;i<=b;i++){
+      if(!db.volumes.find(v=>v.series===sid && v.number===i))
+        db.volumes.push({series:sid,number:i});
+    }
+    save(); alert("Volumi aggiunti");
+  };
+  c.appendChild(box);
+}
+
+/* ------------------ LETTURA – STEP 1 ------------------ */
+function reading(c){
+  c.innerHTML="<h2>Lettura</h2>";
+
+  const box=document.createElement("div");
+  box.className="card";
+  box.innerHTML=`
+    <label>Saga (opzionale)</label>
+    <select id="sagaSel">
+      <option value="">-- Tutte le saghe --</option>
+      ${db.sagas.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${s.id}">${s.name}</option>`)}
+    </select>
+
+    <label>Serie</label>
+    <select id="seriesSel">
+      <option value="">-- Seleziona serie --</option>
+    </select>
+
+    <div id="result"></div>
+  `;
+  c.appendChild(box);
+
+  const sagaSel=box.querySelector("#sagaSel");
+  const seriesSel=box.querySelector("#seriesSel");
+  const result=box.querySelector("#result");
+
+  function refreshSeries(){
+    const sagaId=sagaSel.value;
+    let list=db.series;
+    if(sagaId) list=list.filter(s=>s.sagaId===sagaId);
+
+    seriesSel.innerHTML =
+      `<option value="">-- Seleziona serie --</option>` +
+      list.slice()
+          .sort((a,b)=>a.name.localeCompare(b.name))
+          .map(s=>`<option value="${s.id}">${s.name}</option>`)
+          .join("");
+
+    result.innerHTML="";
+  }
+
+  function showVolumes(){
+    result.innerHTML="";
+    const seriesId=seriesSel.value;
+    if(!seriesId) return;
+
+    const serie=db.series.find(s=>s.id===seriesId);
+    const saga=db.sagas.find(s=>s.id===serie.sagaId);
+
+    const title=document.createElement("h3");
+    title.textContent=`${saga?.name || ""} – ${serie.name}`;
+    result.appendChild(title);
+
+    const vols=db.volumes
+      .filter(v=>v.series===seriesId)
+      .sort((a,b)=>a.number-b.number);
+
+    const vbox=document.createElement("div");
+    vbox.className="volumes";
+    vols.forEach(v=>{
+      const d=document.createElement("div");
+      d.className="volume";
+      d.textContent=v.number;
+      vbox.appendChild(d);
     });
 
-  // se selezioni solo la saga, mostra tutti i volumi della saga
-  mostraVolumiSaga(saga);
+    result.appendChild(vbox);
+  }
+
+  sagaSel.onchange=refreshSeries;
+  seriesSel.onchange=showVolumes;
+
+  refreshSeries();
 }
 
-/* ================= MOSTRA VOLUMI SERIE ================= */
-function mostraVolumi() {
-  const serie = document.getElementById("letturaSerie").value;
-  const volumiDiv = document.getElementById("letturaVolumi");
-  volumiDiv.innerHTML = "";
-
-  if (!serie) return;
-
-  const volumi = data.serie[serie] || [];
-
-  volumi.forEach(v => {
-    const span = document.createElement("span");
-    span.className = "volume";
-    span.textContent = `${serie} #${v}`;
-    volumiDiv.appendChild(span);
-  });
-}
-
-/* ================= MOSTRA VOLUMI SAGA ================= */
-function mostraVolumiSaga(saga) {
-  const volumiDiv = document.getElementById("letturaVolumi");
-  volumiDiv.innerHTML = "";
-
-  data.saghe[saga].forEach(serie => {
-    (data.serie[serie] || []).forEach(v => {
-      const span = document.createElement("span");
-      span.className = "volume";
-      span.textContent = `${serie} #${v}`;
-      volumiDiv.appendChild(span);
-    });
-  });
-}
+render();
 </script>
-
 </body>
 </html>
