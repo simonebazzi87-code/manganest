@@ -69,17 +69,18 @@ function getActiveGroup() {
     return u ? u.groupId : "default";
 }
 
-/* ================= CLOUD SYNC LOGIC ================= */
+/* ================= CLOUD SYNC LOGIC (PULIZIA AUTOMATICA) ================= */
 async function syncCloud(mode) {
     if (!db.cloud || !db.cloud.token || !db.cloud.gistId) {
         alert("Configura prima le chiavi nel menu Cloud.");
         return;
     }
     
-    const tk = db.cloud.token.trim();
-    const gid = db.cloud.gistId.trim();
+    // Rimuove spazi vuoti che il telefono aggiunge spesso a fine riga
+    const tk = db.cloud.token.replace(/\s/g, '');
+    const gid = db.cloud.gistId.replace(/\s/g, '');
     const btn = document.getElementById("syncBtnMain");
-    if(btn) btn.disabled = true;
+    if(btn) { btn.disabled = true; btn.textContent = "⌛..."; }
 
     try {
         if (mode === 'UPLOAD') {
@@ -102,7 +103,7 @@ async function syncCloud(mode) {
             alert("✅ Dati scaricati e aggiornati!");
         }
     } catch (e) { alert("❌ Errore Cloud: " + e.message); }
-    finally { if(btn) btn.disabled = false; }
+    finally { if(btn) { btn.disabled = false; btn.textContent = "☁️ Cloud"; } }
 }
 
 function showCloudMenu() {
@@ -121,13 +122,14 @@ function showCloudMenu() {
 }
 
 window.saveCloudSettings = () => {
-    db.cloud.token = document.getElementById("clToken").value.trim();
-    db.cloud.gistId = document.getElementById("clId").value.trim();
-    save(); alert("Chiavi salvate!"); render();
+    // La pulizia avviene qui al salvataggio
+    db.cloud.token = document.getElementById("clToken").value.replace(/\s/g, '');
+    db.cloud.gistId = document.getElementById("clId").value.replace(/\s/g, '');
+    save(); alert("Chiavi salvate e pulite da spazi!"); render();
 }
 window.resetCloud = () => { if(confirm("Resettare le chiavi?")) { db.cloud={token:"",gistId:""}; save(); showCloudMenu(); } }
 
-/* ================= RENDER & TABS ================= */
+/* ================= TUTTE LE ALTRE FUNZIONI ================= */
 function render(){
   const u = db.users.find(u => u.id === db.currentUser);
   if(u) document.documentElement.style.setProperty("--main", u.color);
@@ -161,13 +163,11 @@ function home(){
   });
 }
 
-/* --- EDICOLA --- */
 function edicolaTab(c){
   const gid = getActiveGroup();
   const activeSeries = db.series.filter(sr => sr.groupId === gid);
   const activeSagaIds = [...new Set(activeSeries.map(s => s.sagaId))];
   const activeSagas = db.sagas.filter(sg => activeSagaIds.includes(sg.id)).sort((a,b)=>a.name.localeCompare(b.name));
-
   c.innerHTML = `<h2 class="section-title">Edicola</h2><div class="filter-bar"><button class="${edMode==='ALL'?'active':''}" onclick="setEdMode('ALL')">Tutto</button><button class="${edMode==='GAPS'?'active':''}" onclick="setEdMode('GAPS')">Solo Mancanti</button><select onchange="setEdSaga(this.value)"><option value="">Tutte le Saghe</option>${activeSagas.map(s => `<option value="${s.id}" ${edSagaFilter===s.id?'selected':''}>${s.name}</option>`).join('')}</select></div><div id="edicolaList"></div>`;
   renderEdicolaList();
 }
@@ -192,7 +192,6 @@ window.renderEdicolaList = () => {
     document.getElementById("edicolaList").innerHTML = h || `<div class="card">Tutto in ordine!</div>`;
 }
 
-/* --- CATALOGO --- */
 function searchDB(c){
   const gid=getActiveGroup(); const fSagas=db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
   c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><select id="searchSaga" onchange="doSearch()"><option value="">Tutto (A-Z)</option>${fSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="searchRes"></div>`;
@@ -210,7 +209,6 @@ window.doSearch=()=>{
   }).join('');
 }
 
-/* --- LETTURA --- */
 function readTab(c){
   const gid=getActiveGroup(); const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
   c.innerHTML=`<h2 class="section-title">Lettura</h2><div class="card"><select id="readSagaSelect" onchange="renderReadList()"><option value="">-- Seleziona Saga --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div id="readArea"></div>`;
@@ -229,7 +227,6 @@ window.renderReadList=()=>{
 }
 window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
 
-/* --- AGGIUNGI & GESTIONE --- */
 function addVolumes(c){
   const gid = getActiveGroup(); const series = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
   c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><select id="vSerie" onchange="showUserVols()"><option value="">-- Seleziona Serie --</option>${series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="seriePreview"></div><div id="vInputArea" style="display:none"><input type="number" id="vStart" placeholder="Da"><input type="number" id="vEnd" placeholder="A"><button class="ok" style="width:100%" onclick="saveVols()">Aggiungi</button></div><div id="vList"></div></div>`;
