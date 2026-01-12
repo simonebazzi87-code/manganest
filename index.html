@@ -20,13 +20,7 @@ main{padding:12px; padding-bottom:100px}
 .col-cover { flex: 0 0 120px; } 
 .col-info { flex: 1; min-width: 0; } 
 
-.vol-container { 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    margin: 5px; 
-    min-width: 45px; /* Forza l'allineamento in colonna */
-}
+.vol-container { display: flex; flex-direction: column; align-items: center; margin: 4px; min-width: 45px; }
 .volumeStatic{padding:5px 8px; border-radius:6px; border:1.5px solid #eee; background:#fff; font-size:14px; font-weight:bold; width: 100%; text-align: center; box-sizing: border-box;}
 .volumeBtn{padding:8px; border-radius:6px; border:1px solid #ddd; background:#f9f9f9; cursor:pointer; font-weight:bold; width: 100%;}
 
@@ -95,7 +89,7 @@ function home(){
   });
 }
 
-/* ================= DATABASE (Punto 1, 2, 7) ================= */
+/* ================= CATALOGO (FILTRO MIRATO) ================= */
 function searchDB(c){
   c.innerHTML=`<h2 class="section-title">Catalogo</h2>
     <div class="card"><input type="text" id="dbSearch" placeholder="Cerca Saga o Serie..." oninput="doSearch()"></div>
@@ -108,14 +102,20 @@ window.doSearch=()=>{
   const gid=getActiveGroup();
   const groupMembers = db.users.filter(u => u.groupId === gid);
 
-  let fSagas = db.sagas.filter(s => s.groupId === gid && (
-    s.name.toLowerCase().includes(query) || 
-    db.series.some(sr => sr.sagaId === s.id && sr.name.toLowerCase().includes(query))
-  )).sort((a,b)=>a.name.localeCompare(b.name));
-
-  document.getElementById("searchRes").innerHTML=fSagas.map(sg=>{ 
-      const sS=db.series.filter(r=>r.sagaId===sg.id).sort((a,b)=>a.name.localeCompare(b.name));
-      return `<div class="card"><h3 style="color:var(--main); border-bottom:1px solid #eee">${sg.name}</h3>${sS.map(sr=>{ 
+  // Mostra saghe se il nome saga combacia, altrimenti filtra le serie internamente
+  let sagas = db.sagas.filter(s => s.groupId === gid);
+  
+  let h = "";
+  sagas.forEach(sg => {
+    const sagaMatches = sg.name.toLowerCase().includes(query);
+    // Se la saga non combacia, cerchiamo solo le serie che combaciano
+    let sS = db.series.filter(r => r.sagaId === sg.id);
+    if (!sagaMatches) {
+        sS = sS.filter(r => r.name.toLowerCase().includes(query));
+    }
+    
+    if (sS.length > 0) {
+        h += `<div class="card"><h3 style="color:var(--main); border-bottom:1px solid #eee">${sg.name}</h3>${sS.sort((a,b)=>a.name.localeCompare(b.name)).map(sr=>{ 
           const aV=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===gid).sort((a,b)=>a.number-b.number); 
           return `<div class="row-edit">
             <div class="col-cover"><img src="${sr.img}" class="cover-big"></div>
@@ -130,11 +130,13 @@ window.doSearch=()=>{
               </div>
             </div>
           </div>`; 
-      }).join('')}</div>`; 
-  }).join('');
+      }).join('')}</div>`;
+    }
+  });
+  document.getElementById("searchRes").innerHTML = h || `<div class="card">Nessun risultato.</div>`;
 }
 
-/* ================= FUMETTERIA (Punti 5, 6, 7) ================= */
+/* ================= FUMETTERIA ================= */
 function fumetteriaTab(c){
   c.innerHTML = `<h2 class="section-title">Fumetteria</h2>
     <div class="card"><input type="text" id="fSearch" placeholder="Cerca serie o saga..." oninput="renderFumetteria()"></div>
@@ -146,45 +148,37 @@ window.renderFumetteria = () => {
     const query = document.getElementById("fSearch").value.toLowerCase();
     const gid = getActiveGroup();
     let series = db.series.filter(s => s.groupId === gid && s.name.toLowerCase().includes(query));
-    
     let h = "";
     series.forEach(sr => {
         const vols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number);
         const max = vols.length > 0 ? Math.max(...vols) : 0;
         let gaps = []; for(let i=1; i<max; i++) if(!vols.includes(i)) gaps.push(i);
         let next = (sr.status === "In Corso" || max === 0) ? max + 1 : null;
-
         if(gaps.length > 0 || next) {
-            h += `<div class="card"><div class="row-edit">
-                <div class="col-cover"><img src="${sr.img}" class="cover-big"></div>
-                <div class="col-info">
+            h += `<div class="card"><div class="row-edit"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info">
                     <div style="display:flex; justify-content:space-between"><b>${sr.name}</b> <span class="buy-tag">DA PRENDERE</span></div>
-                    <div style="display:flex; flex-wrap:wrap; margin-top:10px">
-                        ${gaps.map(n => `<div class="vol-container"><span class="volumeStatic" style="border-color:#e74c3c; color:#e74c3c">${n}</span><span class="small">Mancante</span></div>`).join('')}
-                        ${next ? `<div class="vol-container"><span class="volumeStatic" style="border-color:#27ae60; color:#333">${next}</span><span class="small">Nuovo</span></div>` : ''}
-                    </div>
-                </div>
-            </div></div>`;
+                    <div style="display:flex; flex-wrap:wrap; margin-top:10px">${gaps.map(n => `<div class="vol-container"><span class="volumeStatic" style="border-color:#e74c3c; color:#e74c3c">${n}</span><span class="small">Mancante</span></div>`).join('')}${next ? `<div class="vol-container"><span class="volumeStatic" style="border-color:#27ae60; color:#333">${next}</span><span class="small">Nuovo</span></div>` : ''}</div>
+                </div></div></div>`;
         }
     });
-    document.getElementById("fList").innerHTML = h || `<div class="card">Tutto in regola! Nessun volume da acquistare.</div>`;
+    document.getElementById("fList").innerHTML = h || `<div class="card">Nulla da comprare.</div>`;
 }
 
-/* ================= SEGNA COME LETTO ================= */
+/* ================= SEGNA COME LETTO (SOLO SU RICERCA) ================= */
 function readTab(c){
   c.innerHTML=`<h2 class="section-title">Segna come letto</h2>
-    <div class="card"><input type="text" id="readSearch" placeholder="Cerca serie..." oninput="renderReadList()"></div>
+    <div class="card"><input type="text" id="readSearch" placeholder="Scrivi il nome di una serie per segnare i volumi..." oninput="renderReadList()"></div>
     <div id="readArea"></div>`;
-  renderReadList();
 }
 window.renderReadList=()=>{
   const query = (document.getElementById("readSearch")?.value || "").toLowerCase();
   const gid=getActiveGroup(); const user=db.users.find(u=>u.id===db.currentUser);
   const groupMembers = db.users.filter(u => u.groupId === user.groupId);
   
+  if(query.length < 2) { document.getElementById("readArea").innerHTML = ""; return; }
+
   document.getElementById("readArea").innerHTML=db.series.filter(s=>s.groupId===gid && s.name.toLowerCase().includes(query)).map(sr=>{
     const myGroupVols=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===user.groupId).sort((a,b)=>a.number-b.number);
-    if(myGroupVols.length===0) return "";
     return `<div class="card"><div class="row-edit">
       <div class="col-cover"><img src="${sr.img}" class="cover-big"></div>
       <div class="col-info">
@@ -200,14 +194,46 @@ window.renderReadList=()=>{
 }
 window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
 
-/* ================= AGGIUNGI SERIE (Punto 14) ================= */
+/* ================= AGGIUNGI VOLUMI (VERSIONE CHECKPOINT CON RICERCA) ================= */
+function addVolumes(c){
+  c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2>
+    <div class="card">
+        <input type="text" id="vSearch" placeholder="Cerca serie..." oninput="filterVSerie()">
+        <select id="vSerie" onchange="showUserVols()" style="margin-top:10px"></select>
+        <div id="seriePreview" style="margin-top:15px"></div>
+        <div id="vInputArea" style="display:none">
+            <div class="row-edit" style="border:none; padding:0"><input type="number" id="vStart" placeholder="Dal n."><input type="number" id="vEnd" placeholder="Al n."></div>
+            <button class="ok" style="width:100%; margin-top:10px" onclick="saveVols()">Aggiungi</button>
+        </div>
+    </div><div id="vList"></div>`;
+  filterVSerie();
+}
+window.filterVSerie=()=>{
+  const q = document.getElementById("vSearch").value.toLowerCase();
+  const series = db.series.filter(s => s.groupId === getActiveGroup() && s.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById("vSerie").innerHTML = `<option value="">-- Seleziona Risultato (${series.length}) --</option>` + series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function showUserVols(){
+  const sid=document.getElementById("vSerie").value; if(!sid) { document.getElementById("vInputArea").style.display="none"; return; }
+  const sr=db.series.find(x=>x.id===sid); document.getElementById("vInputArea").style.display="block";
+  document.getElementById("seriePreview").innerHTML=`<div class="row-edit" style="border:none"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info"><h3>${sr.name}</h3><p class="small">${sr.authors}</p></div></div>`;
+  const groupVols=db.volumes.filter(v=>v.seriesId===sid && v.groupId===getActiveGroup()).sort((a,b)=>a.number-b.number);
+  document.getElementById("vList").innerHTML=`<div class="card"><h4>Posseduti Gruppo:</h4><div style="display:flex;flex-wrap:wrap">${groupVols.map(v=>`<button class="volumeBtn" style="width:auto; margin:2px" onclick="removeVol('${v.id}')">${v.number}</button>`).join('')}</div></div>`;
+}
+window.saveVols=()=>{
+  const sid=document.getElementById("vSerie").value, start=Number(document.getElementById("vStart").value), end=Number(document.getElementById("vEnd").value)||start, gid=getActiveGroup();
+  for(let i=start; i<=end; i++) if(!db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, groupId:gid});
+  save(); showUserVols();
+}
+window.removeVol=(id)=>{ if(confirm("Eliminare?")){db.volumes=db.volumes.filter(v=>v.id!==id); save(); showUserVols();}}
+
+/* ================= AGGIUNGI SERIE ================= */
 function addSeries(c){
   const gid = getActiveGroup();
   const sortedSagas = db.sagas.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
-  
   c.innerHTML = `<h2 class="section-title">Aggiungi Serie</h2>
     <div class="card"><h3>1. Crea Casa Editrice</h3>
-      <div style="display:flex; gap:10px"><input id="newPubName" placeholder="Es: Panini, J-Pop..."><button class="ok" onclick="addPub()">Aggiungi</button></div>
+      <div style="display:flex; gap:10px"><input id="newPubName" placeholder="Nome Editore"><button class="ok" onclick="addPub()">Aggiungi</button></div>
     </div>
     <div class="card"><h3>2. Crea Saga</h3>
       <div style="display:flex; gap:10px"><input id="sagaNameOnly" placeholder="Nome Saga"><button class="ok" onclick="createSagaOnly()">Crea</button></div>
@@ -221,16 +247,12 @@ function addSeries(c){
       <select id="nsStatus"><option value="In Corso">In Corso</option><option value="Terminata">Terminata</option></select>
       <button class="ok" style="width:100%; margin-top:10px" onclick="createSerieFull()">Salva Serie</button>
     </div>
-    <h2 class="section-title">Modifica Esistenti</h2>
-    <div class="card"><input type="text" id="editSearch" placeholder="Cerca serie da modificare..." oninput="renderEditArea()"></div>
+    <h2 class="section-title">Gestione</h2>
+    <div class="card"><input type="text" id="editSearch" placeholder="Cerca serie per modificare..." oninput="renderEditArea()"></div>
     <div id="editArea"></div>`;
 }
-
-window.addPub=()=>{
-  const n = document.getElementById("newPubName").value.trim();
-  if(n && !db.publishers.includes(n)) { db.publishers.push(n); save(); addSeries(app); }
-}
-
+window.addPub=()=>{ const n=document.getElementById("newPubName").value.trim(); if(n){db.publishers.push(n); save(); addSeries(app);}}
+window.createSagaOnly=()=>{ const n=document.getElementById("sagaNameOnly").value.trim(); if(n){db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app);}}
 window.createSerieFull=()=>{
   const name=document.getElementById("nsTitolo").value.trim(); if(!name)return;
   let sagaId=document.getElementById("nsSagaSelect").value; const gid=getActiveGroup();
@@ -238,77 +260,30 @@ window.createSerieFull=()=>{
   db.series.push({id:crypto.randomUUID(), name, sagaId, groupId:gid, authors:document.getElementById("nsAutore").value, publisher:document.getElementById("nsEditore").value, img:document.getElementById("nsImg").value, status:document.getElementById("nsStatus").value});
   save(); addSeries(app);
 }
-
 window.renderEditArea=()=>{
     const query = document.getElementById("editSearch").value.toLowerCase();
-    if(!query) { document.getElementById("editArea").innerHTML=""; return; }
+    if(query.length<2) { document.getElementById("editArea").innerHTML=""; return; }
     const gid=getActiveGroup();
-    const series = db.series.filter(s=>s.groupId===gid && s.name.toLowerCase().includes(query));
-    document.getElementById("editArea").innerHTML=series.map(sr=>`
-        <div class="card"><div class="row-edit">
-            <div class="col-cover"><img src="${sr.img}" class="cover-big"></div>
-            <div class="col-info">
-                <input id="t-${sr.id}" value="${sr.name}">
-                <select id="e-${sr.id}">${db.publishers.map(p=>`<option value="${p}" ${sr.publisher===p?'selected':''}>${p}</option>`).join('')}</select>
-                <div style="margin-top:10px"><button class="ok" onclick="updateFullSerie('${sr.id}')">Salva</button> <button class="danger" onclick="deleteSerie('${sr.id}')">Elimina</button></div>
-            </div>
-        </div></div>`).join('');
+    document.getElementById("editArea").innerHTML=db.series.filter(s=>s.groupId===gid && s.name.toLowerCase().includes(query)).map(sr=>`
+        <div class="card"><div class="row-edit"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info">
+                <input id="t-${sr.id}" value="${sr.name}"><select id="e-${sr.id}">${db.publishers.map(p=>`<option value="${p}" ${sr.publisher===p?'selected':''}>${p}</option>`).join('')}</select>
+                <div style="margin-top:10px"><button class="ok" onclick="upS('${sr.id}')">Salva</button> <button class="danger" onclick="delS('${sr.id}')">Elimina</button></div>
+            </div></div></div>`).join('');
 }
+window.upS=(id)=>{ const s=db.series.find(x=>x.id===id); s.name=document.getElementById(`t-${id}`).value; s.publisher=document.getElementById(`e-${id}`).value; save(); renderEditArea(); }
+window.delS=(id)=>{ if(confirm("Eliminare?")){db.series=db.series.filter(s=>s.id!==id); db.volumes=db.volumes.filter(v=>v.seriesId!==id); save(); renderEditArea(); }}
 
-window.updateFullSerie=(id)=>{ 
-  const s=db.series.find(x=>x.id===id); 
-  s.name=document.getElementById(`t-${id}`).value; 
-  s.publisher=document.getElementById(`e-${id}`).value; 
-  save(); renderEditArea(); 
-}
-window.deleteSerie=(id)=>{ if(confirm("Eliminare?")){ db.series=db.series.filter(s=>s.id!==id); db.volumes=db.volumes.filter(v=>v.seriesId!==id); save(); renderEditArea(); }}
-window.createSagaOnly=()=>{ const n=document.getElementById("sagaNameOnly").value.trim(); if(!n)return; db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app); }
-
-/* ================= AGGIUNGI NUMERI ================= */
-function addVolumes(c){
-  const gid = getActiveGroup(); 
-  c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2>
-    <div class="card"><input type="text" id="vSearch" placeholder="Cerca serie..." oninput="filterVSerie()">
-    <select id="vSerie" onchange="showUserVols()"></select>
-    <div id="seriePreview" style="margin-top:15px"></div>
-    <div id="vInputArea" style="display:none">
-      <div style="display:flex; gap:10px"><input type="number" id="vStart" placeholder="Da"><input type="number" id="vEnd" placeholder="A"></div>
-      <button class="ok" style="width:100%; margin-top:10px" onclick="saveVols()">Aggiungi</button>
-      <div id="errorArea" class="error-msg"></div>
-    </div></div><div id="vList"></div>`;
-  filterVSerie();
-}
-window.filterVSerie=()=>{
-  const q = document.getElementById("vSearch").value.toLowerCase();
-  const series = db.series.filter(s => s.groupId === getActiveGroup() && s.name.toLowerCase().includes(q));
-  document.getElementById("vSerie").innerHTML = `<option value="">-- Seleziona --</option>` + series.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-}
-function showUserVols(){
-  const sid=document.getElementById("vSerie").value; if(!sid) return;
-  const sr=db.series.find(x=>x.id===sid); document.getElementById("vInputArea").style.display="block";
-  document.getElementById("seriePreview").innerHTML=`<div class="row-edit"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info"><h3>${sr.name}</h3></div></div>`;
-  const groupVols=db.volumes.filter(v=>v.seriesId===sid && v.groupId===getActiveGroup()).sort((a,b)=>a.number-b.number);
-  document.getElementById("vList").innerHTML=`<div class="card"><h4>Posseduti:</h4><div style="display:flex;flex-wrap:wrap">${groupVols.map(v=>`<button class="volumeBtn" onclick="removeVol('${v.id}')">${v.number}</button>`).join('')}</div></div>`;
-}
-window.saveVols=()=>{
-  const sid=document.getElementById("vSerie").value, start=Number(document.getElementById("vStart").value), end=Number(document.getElementById("vEnd").value)||start, gid=getActiveGroup();
-  for(let i=start; i<=end; i++) if(!db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, groupId:gid});
-  save(); showUserVols();
-}
-window.removeVol=(id)=>{ if(confirm("Eliminare?")){db.volumes=db.volumes.filter(v=>v.id!==id); save(); showUserVols();}}
-
-/* ================= UTENTI & GRUPPI (Punto 3) ================= */
+/* ================= UTENTI & GRUPPI (COLORI RIPRISTINATI) ================= */
 function users(c){
-  c.innerHTML = `<h2 class="section-title">Gestione Gruppi</h2>
-    <div class="card"><div style="display:flex; gap:10px"><input id="newGN" placeholder="Nome nuovo gruppo"><button class="ok" onclick="addG()">Crea</button></div></div>
-    <div id="gList"></div>
-    <h2 class="section-title">Profili</h2>
-    <div id="uList"></div>
+  c.innerHTML = `<h2 class="section-title">Gruppi</h2>
+    <div class="card"><div style="display:flex; gap:10px"><input id="newGN" placeholder="Nome gruppo"><button class="ok" onclick="addG()">Crea</button></div></div>
+    <div id="gList"></div><h2 class="section-title">Profili</h2><div id="uList"></div>
     <div class="card"><h3>Nuovo Profilo</h3><input id="newUN" placeholder="Nome"><button class="ok" onclick="addU()">Crea</button></div>`;
   
   document.getElementById("gList").innerHTML = db.groups.map(g=>`<div class="card" style="display:flex; justify-content:space-between"><span>${g.name}</span>${g.id!=='default'?`<button class="danger" onclick="delG('${g.id}')">X</button>`:''}</div>`).join('');
   document.getElementById("uList").innerHTML = db.users.map(u=>`<div class="card">
     <input id="un-${u.id}" value="${u.name}">
+    <input type="color" id="uc-${u.id}" value="${u.color || '#6c5ce7'}" style="height:40px; cursor:pointer">
     <select id="ug-${u.id}">${db.groups.map(g=>`<option value="${g.id}" ${u.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}</select>
     <div style="margin-top:10px"><button class="ok" onclick="upU('${u.id}')">Salva</button> <button class="danger" onclick="delU('${u.id}')">Elimina</button></div>
   </div>`).join('');
@@ -317,7 +292,7 @@ window.addG=()=>{ const n=document.getElementById("newGN").value; if(n){db.group
 window.delG=(id)=>{ if(confirm("Eliminare gruppo?")){db.groups=db.groups.filter(g=>g.id!==id); save(); users(app);}}
 window.addU=()=>{ const n=document.getElementById("newUN").value; if(n){db.users.push({id:crypto.randomUUID(), name:n, color:"#6c5ce7", groupId:"default"}); save(); users(app);}}
 window.delU=(id)=>{ if(confirm("Eliminare utente?")){db.users=db.users.filter(u=>u.id!==id); save(); render();}}
-window.upU=(id)=>{ const u=db.users.find(x=>x.id===id); u.name=document.getElementById(`un-${id}`).value; u.groupId=document.getElementById(`ug-${id}`).value; save(); render(); }
+window.upU=(id)=>{ const u=db.users.find(x=>x.id===id); u.name=document.getElementById(`un-${id}`).value; u.color=document.getElementById(`uc-${id}`).value; u.groupId=document.getElementById(`ug-${id}`).value; save(); render(); }
 
 /* ================= BACKUP ================= */
 function backupMenu(c){
