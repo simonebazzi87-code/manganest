@@ -31,11 +31,10 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
 .section-title{border-left: 4px solid var(--main); padding-left: 10px; margin: 20px 0 10px 0; color: #2d3436}
 
-/* Consigli a griglia (Wrap) */
 .advice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; padding: 10px 0; }
 .advice-card { font-size: 11px; text-align: center; position: relative; }
 .advice-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
-.advice-dots { position: absolute; top: 5px; right: 5px; display: flex; gap: 2px; background: rgba(255,255,255,0.8); padding: 3px; border-radius: 10px; border: 1px solid #ccc; z-index: 10; }
+.advice-dots { position: absolute; top: 5px; right: 5px; display: flex; gap: 2px; background: rgba(255,255,255,0.8); padding: 3px; border-radius: 10px; border: 1px solid #ccc; }
 
 .welcome-screen { text-align: center; max-width: 450px; margin: 40px auto; padding: 30px; }
 .btn-large { width: 100%; padding: 20px; font-size: 16px; margin-bottom: 15px; cursor: pointer; border-radius: 8px; font-weight: bold; border: none; }
@@ -54,8 +53,7 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 let db = JSON.parse(localStorage.getItem("manganest_v5")) || {
   users: [{id: "u1", name: "Simone", color: "#0984e3", groupId: "default"}, {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}],
   groups: [{id: "default", name: "Casa"}],
-  currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [],
-  backupCheckDone: false
+  currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], backupCheckDone: false
 };
 
 const save=()=>localStorage.setItem("manganest_v5",JSON.stringify(db));
@@ -68,26 +66,15 @@ switchBtn.onclick=()=>{db.currentUser=null; save(); render();};
 function getActiveGroup() { const u = db.users.find(u => u.id === db.currentUser); return u ? u.groupId : "default"; }
 
 function render(){
-  // 1. Controllo Backup all'apertura
   if(!db.backupCheckDone){
-    app.innerHTML = `
-      <div class="welcome-screen card">
-        <h2 style="color:var(--main)">Sincronizzazione Dati</h2>
-        <p>Hai un nuovo file di backup da caricare?</p>
-        <input type="file" id="startImport" onchange="handleStartImport(this)" style="display:none">
-        <button class="btn-large ok" onclick="document.getElementById('startImport').click()">SÌ, CARICA BACKUP (.json)</button>
-        <button class="btn-large" style="background:#dfe6e9; color:#2d3436" onclick="skipBackup()">NO, PROCEDI CON I DATI LOCALI</button>
-        <p style="font-size:12px; color:#636e72">L'importazione è consigliata se Andrea ha fatto modifiche recenti.</p>
-      </div>`;
-    menu.innerHTML = "";
-    who.textContent = "";
-    switchBtn.style.display = "none";
-    return;
+    app.innerHTML = `<div class="welcome-screen card"><h2>Sincronizzazione Dati</h2><p>Carica il backup più recente per non perdere modifiche.</p>
+      <input type="file" id="startImport" onchange="handleStartImport(this)" style="display:none">
+      <button class="btn-large ok" onclick="document.getElementById('startImport').click()">CARICA BACKUP (.json)</button>
+      <button class="btn-large" style="background:#dfe6e9; color:#2d3436" onclick="skipBackup()">NON CI SONO AGGIORNAMENTI, PROCEDI</button></div>`;
+    menu.innerHTML = ""; who.textContent = ""; switchBtn.style.display = "none"; return;
   }
-
-  // 2. Scelta Utente
   if(!db.currentUser){
-    app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>Chi sta usando l'app?</h3><div id='userList' style='display:flex; justify-content:center; flex-wrap:wrap; gap:10px'></div>";
+    app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>Chi sei?</h3><div id='userList' style='display:flex; justify-content:center; flex-wrap:wrap; gap:10px'></div>";
     db.users.forEach(u=>{
       const b = document.createElement("button"); b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px 30px";
       b.onclick = () => { db.currentUser = u.id; save(); render(); };
@@ -95,15 +82,12 @@ function render(){
     });
     return;
   }
-
-  // 3. App Principale
   const u = db.users.find(u => u.id === db.currentUser);
   if(u) document.documentElement.style.setProperty("--main", u.color);
   who.textContent = `Utente: ${u.name}`;
   const group = db.groups.find(g => g.id === (u?.groupId || "default"));
   document.getElementById("groupLabel").textContent = `[Gruppo: ${group.name}]`;
   switchBtn.style.display = "inline";
-  
   menu.innerHTML = "";
   [["Database",searchDB],["Fumetteria",fumetteriaTab],["Segna come letto",readTab],["Statistiche",statsTab],["Consigli",adviceTab],["Aggiungi numeri",addVolumes],["Aggiungi serie",addSeries],["Utenti",users],["Backup",backupMenu]].forEach(([t,f])=>{
     const b = document.createElement("button"); b.textContent = t; b.onclick = () => f(app); menu.appendChild(b);
@@ -113,59 +97,12 @@ function render(){
 
 window.handleStartImport=(input)=>{
   const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const imported = JSON.parse(e.target.result);
-      db = {...imported, backupCheckDone: true};
-      save();
-      render();
-    } catch(err) { alert("File non valido!"); }
-  };
+  reader.onload = (e) => { try { db = {...JSON.parse(e.target.result), backupCheckDone: true}; save(); render(); } catch(err) { alert("Errore file!"); } };
   reader.readAsText(input.files[0]);
 }
 window.skipBackup=()=>{ db.backupCheckDone = true; render(); }
 
-/* ================= CONSIGLI (ORDINE ALFABETICO & WRAP) ================= */
-function adviceTab(c){
-    const gid = getActiveGroup(); const myId = db.currentUser;
-    const groupMembers = db.users.filter(u => u.groupId === gid);
-    const otherUsers = groupMembers.filter(u => u.id !== myId);
-    
-    c.innerHTML = `<h2 class="section-title">I Tuoi Consigli</h2>`;
-
-    const renderAdviceSection = (title, list) => {
-        if(list.length === 0) return "";
-        // ORDINE ALFABETICO RIGOROSO
-        list.sort((a,b) => a.name.localeCompare(b.name, 'it', {sensitivity: 'base'}));
-
-        return `<h4 style="margin: 25px 0 10px 0; color:var(--main)">${title}</h4><div class="advice-grid">${list.map(s => {
-            const dots = groupMembers.map(m => {
-                const sVols = db.volumes.filter(v => v.seriesId === s.id).map(v=>v.id);
-                return db.read.some(r => r.userId === m.id && sVols.includes(r.volId)) ? `<span class="dot" style="background:${m.color}"></span>` : '';
-            }).join('');
-            return `<div class="advice-card"><div class="advice-dots">${dots}</div><img src="${s.img}"><div><b>${s.name}</b></div></div>`;
-        }).join('')}</div><hr style="border:0; border-bottom:1px solid #eee">`;
-    };
-
-    const allS = db.series.filter(s => s.groupId === gid);
-    const getVids = (sid) => db.volumes.filter(v => v.seriesId === sid).map(v=>v.id);
-    const getRead = (uid, vids) => db.read.filter(r => r.userId === uid && vids.includes(r.volId)).length;
-
-    const inCorso = allS.filter(s => s.status !== 'Non Posseduta' && (() => { const vids = getVids(s.id); const r = getRead(myId, vids); return r > 0 && r < vids.length; })());
-    const piuAvanti = allS.filter(s => s.status !== 'Non Posseduta' && (() => { const vids = getVids(s.id); const myR = getRead(myId, vids); const maxOther = Math.max(...otherUsers.map(o => getRead(o.id, vids)), 0); return myR > 0 && maxOther > myR; })());
-    const mySagas = [...new Set(allS.filter(s => getRead(myId, getVids(s.id)) > 0).map(s => s.sagaId))];
-    const altreSerieSaga = allS.filter(s => s.status !== 'Non Posseduta' && mySagas.includes(s.sagaId) && getRead(myId, getVids(s.id)) === 0);
-    const letteDaAltri = allS.filter(s => s.status !== 'Non Posseduta' && getRead(myId, getVids(s.id)) === 0 && otherUsers.some(o => getRead(o.id, getVids(s.id)) > 0));
-    const nessuno = allS.filter(s => groupMembers.every(m => getRead(m.id, getVids(s.id)) === 0));
-
-    c.innerHTML += renderAdviceSection("Continua a leggere", inCorso);
-    c.innerHTML += renderAdviceSection("Gli altri sono più avanti di te in queste serie", piuAvanti);
-    c.innerHTML += renderAdviceSection("Altre serie che fanno parte di saghe che hai iniziato", altreSerieSaga);
-    c.innerHTML += renderAdviceSection("Lette da altri utenti, ma non ancora iniziate da te", letteDaAltri);
-    c.innerHTML += renderAdviceSection("Serie che nessuno ha ancora iniziato, sarai il primo tu?", nessuno);
-}
-
-/* ================= CATALOGO & RICERCA ================= */
+/* ================= CATALOGO ================= */
 function searchDB(c){
   c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><input type="text" id="dbSearch" placeholder="Cerca Saga o Serie..." oninput="doSearch()"></div><div id="searchRes"></div>`;
   doSearch();
@@ -184,7 +121,7 @@ window.doSearch=()=>{
         h += `<div class="card"><h3 style="color:var(--main); border-bottom:1px solid #eee">${sg.name}</h3>${sS.map(sr=>{ 
           const aV=db.volumes.filter(v=>v.seriesId===sr.id && v.groupId===gid).sort((a,b)=>a.number-b.number); 
           return `<div class="row-edit" style="border:none"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info">
-            <b style="font-size:20px">${sr.name}</b> ${sr.status === 'Non Posseduta' ? '<span class="badge" style="background:#3498db;color:#fff;padding:2px 5px;font-size:10px;vertical-align:middle;margin-left:5px">NON POSSEDUTA</span>' : ''}<br>
+            <b style="font-size:20px">${sr.name}</b> ${sr.status === 'Non Posseduta' ? '<span class="badge" style="background:#3498db;color:#fff;padding:2px 5px;font-size:10px;margin-left:5px">NON POSSEDUTA</span>' : ''}<br>
             <div style="display:flex; flex-wrap:wrap; margin-top:10px">${aV.map(v=>{
                   const dots = groupMembers.map(m => db.read.some(r=>r.volId===v.id && r.userId===m.id) ? `<span class="dot" style="background:${m.color}"></span>` : '').join('');
                   return `<div class="vol-container"><span class="volumeStatic">${v.number}</span><div class="read-indicators">${dots}</div></div>`;
@@ -192,10 +129,10 @@ window.doSearch=()=>{
       }).join('')}</div>`;
     }
   });
-  document.getElementById("searchRes").innerHTML = h || `<div class="card">Nessun risultato trovato.</div>`;
+  document.getElementById("searchRes").innerHTML = h || `<div class="card">Nessun risultato.</div>`;
 }
 
-/* ================= FUNZIONI ACCESSORIE ================= */
+/* ================= FUMETTERIA ================= */
 function fumetteriaTab(c){
   c.innerHTML = `<h2 class="section-title">Fumetteria</h2><div id="fList"></div>`;
   const gid = getActiveGroup();
@@ -209,6 +146,7 @@ function fumetteriaTab(c){
   document.getElementById("fList").innerHTML = h || "Tutto in pari!";
 }
 
+/* ================= SEGNA COME LETTO ================= */
 function readTab(c){
   c.innerHTML=`<h2 class="section-title">Segna come letto</h2><div class="card"><input type="text" id="readSearch" placeholder="Cerca serie..." oninput="renderReadList()"></div><div id="readArea"></div>`;
 }
@@ -225,12 +163,41 @@ window.renderReadList=()=>{
 }
 window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
 
+/* ================= STATISTICHE ================= */
 function statsTab(c){
-  const gid = getActiveGroup();
-  const vols = db.volumes.filter(v => v.groupId === gid).length;
-  c.innerHTML = `<h2 class="section-title">Statistiche</h2><div class="card">Totale volumi in collezione: <b>${vols}</b></div>`;
+    const gid = getActiveGroup();
+    const groupSeries = db.series.filter(s => s.groupId === gid && s.status !== 'Non Posseduta');
+    const groupVols = db.volumes.filter(v => v.groupId === gid);
+    c.innerHTML = `<h2 class="section-title">Statistiche</h2><div class="card">Serie totali: ${groupSeries.length}<br>Volumi posseduti: ${groupVols.length}</div>`;
+    db.users.filter(u => u.groupId === gid).forEach(u => {
+        const readVols = db.read.filter(r => r.userId === u.id).length;
+        c.innerHTML += `<div class="card"><b>${u.name}</b>: ha letto ${readVols} volumi.</div>`;
+    });
 }
 
+/* ================= CONSIGLI (GRIGLIA + ALFABETICO) ================= */
+function adviceTab(c){
+    const gid = getActiveGroup(); const myId = db.currentUser;
+    const groupMembers = db.users.filter(u => u.groupId === gid);
+    c.innerHTML = `<h2 class="section-title">I Tuoi Consigli</h2>`;
+    const renderAdviceSection = (title, list) => {
+        if(list.length === 0) return "";
+        list.sort((a,b) => a.name.localeCompare(b.name));
+        return `<h4 style="margin: 25px 0 10px 0; color:var(--main)">${title}</h4><div class="advice-grid">${list.map(s => {
+            const dots = groupMembers.map(m => {
+                const vids = db.volumes.filter(v => v.seriesId === s.id).map(v=>v.id);
+                return db.read.some(r => r.userId === m.id && vids.includes(r.volId)) ? `<span class="dot" style="background:${m.color}"></span>` : '';
+            }).join('');
+            return `<div class="advice-card"><div class="advice-dots">${dots}</div><img src="${s.img}"><div><b>${s.name}</b></div></div>`;
+        }).join('')}</div>`;
+    };
+    const allS = db.series.filter(s => s.groupId === gid);
+    const getRead = (uid, sid) => { const vids = db.volumes.filter(v => v.seriesId === sid).map(v=>v.id); return db.read.filter(r => r.userId === uid && vids.includes(r.volId)).length; };
+    const inCorso = allS.filter(s => { const r = getRead(myId, s.id); return r > 0 && r < db.volumes.filter(v=>v.seriesId===s.id).length; });
+    c.innerHTML += renderAdviceSection("Continua a leggere", inCorso);
+}
+
+/* ================= AGGIUNGI NUMERI ================= */
 function addVolumes(c){
   c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><input type="text" id="vSearch" placeholder="Cerca serie..." oninput="renderAddVolList()"></div><div id="vAddList"></div>`;
 }
@@ -244,35 +211,38 @@ window.renderAddVolList=()=>{
 window.bulkAdd=(sid)=>{
     const start=Number(document.getElementById(`st-${sid}`).value), end=Number(document.getElementById(`en-${sid}`).value)||start, gid=getActiveGroup();
     for(let i=start; i<=end; i++) if(!db.volumes.find(v=>v.seriesId===sid && v.number===i && v.groupId===gid)) db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, groupId:gid});
-    save(); alert("Fatto!");
+    save(); alert("Fatto!"); renderAddVolList();
 }
 
+/* ================= AGGIUNGI/MODIFICA SERIE ================= */
 function addSeries(c){
-  c.innerHTML = `<h2 class="section-title">Aggiungi Serie</h2><div class="card"><input id="nsTitolo" placeholder="Titolo"><input id="nsImg" placeholder="URL Immagine"><button class="ok" onclick="createSerieQuick()">Crea</button></div>`;
+  const gid = getActiveGroup();
+  c.innerHTML = `<h2 class="section-title">Aggiungi Serie</h2><div class="card"><input id="nsTitolo" placeholder="Titolo"><input id="nsImg" placeholder="URL Copertina"><button class="ok" onclick="createSerieQuick()">Crea</button></div>
+    <h2 class="section-title">Modifica Esistenti</h2><div id="editArea"></div>`;
+  db.series.filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr=>{
+    document.getElementById("editArea").innerHTML += `<div class="card"><b>${sr.name}</b><br><select id="st-${sr.id}" onchange="upStat('${sr.id}')"><option value="In Corso" ${sr.status==='In Corso'?'selected':''}>In Corso</option><option value="Terminata" ${sr.status==='Terminata'?'selected':''}>Terminata</option><option value="Non Posseduta" ${sr.status==='Non Posseduta'?'selected':''}>Non Posseduta</option></select> <button class="danger" onclick="delS('${sr.id}')">Elimina</button></div>`;
+  });
 }
 window.createSerieQuick=()=>{
-  const name=document.getElementById("nsTitolo").value.trim(); const img=document.getElementById("nsImg").value.trim();
+  const name=document.getElementById("nsTitolo").value.trim(); const img=document.getElementById("nsImg").value.trim(); if(!name) return;
   const gid=getActiveGroup(); const sid=crypto.randomUUID();
-  db.sagas.push({id:sid, name, groupId:gid});
-  db.series.push({id:sid, name, sagaId:sid, groupId:gid, img, status:"In Corso"});
-  save(); render();
+  db.sagas.push({id:sid, name, groupId:gid}); db.series.push({id:sid, name, sagaId:sid, groupId:gid, img, status:"In Corso"});
+  save(); addSeries(app);
 }
+window.upStat=(id)=>{ db.series.find(s=>s.id===id).status=document.getElementById(`st-${id}`).value; save(); }
+window.delS=(id)=>{ if(confirm("Eliminare?")){db.series=db.series.filter(s=>s.id!==id); db.volumes=db.volumes.filter(v=>v.seriesId!==id); save(); addSeries(app);}}
 
+/* ================= UTENTI E BACKUP ================= */
 function users(c){
   c.innerHTML = `<h2 class="section-title">Utenti</h2>`;
   db.users.forEach(u=>{ c.innerHTML += `<div class="card"><b>${u.name}</b></div>`; });
 }
-
 function backupMenu(c){
-  c.innerHTML = `<h2 class="section-title">Backup & Ripristino</h2>
-    <div class="card"><button class="ok" style="width:100%" onclick="exportDB()">SCARICA FILE BACKUP (.json)</button></div>
-    <div class="card"><h3>Importa File</h3><input type="file" onchange="handleStartImport(this)"></div>`;
+  c.innerHTML = `<h2 class="section-title">Backup</h2><div class="card"><button class="ok" style="width:100%" onclick="exportDB()">SCARICA FILE BACKUP</button></div><div class="card"><h3>Importa Manuale</h3><input type="file" onchange="handleStartImport(this)"></div>`;
 }
 window.exportDB=()=>{
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-  const dl = document.createElement('a'); dl.setAttribute("href", dataStr);
-  dl.setAttribute("download", `manganest_backup.json`);
-  dl.click();
+  const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `manganest_backup.json`); dl.click();
 }
 
 render();
