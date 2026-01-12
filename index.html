@@ -39,13 +39,12 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-box { background: #fff; padding: 10px; border-radius: 8px; border-bottom: 3px solid var(--main); text-align: center; font-size: 13px; }
 
-/* MODIFICA: CONSIGLI A CAPO (GRID) */
+/* CONSIGLI GRID (NO SCROLL) */
 .advice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; padding: 10px 0; }
 .advice-card { font-size: 11px; text-align: center; position: relative; }
 .advice-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
-.advice-dots { position: absolute; top: 5px; right: 5px; display: flex; gap: 2px; background: rgba(255,255,255,0.8); padding: 3px; border-radius: 10px; border: 1px solid #ccc; z-index: 5; }
+.advice-dots { position: absolute; top: 5px; right: 5px; display: flex; gap: 2px; background: rgba(255,255,255,0.8); padding: 3px; border-radius: 10px; border: 1px solid #ccc; }
 
-/* Schermata Iniziale */
 .welcome-screen { text-align: center; max-width: 450px; margin: 40px auto; padding: 30px; }
 .btn-large { width: 100%; padding: 20px; font-size: 16px; margin-bottom: 15px; cursor: pointer; border-radius: 8px; font-weight: bold; border: none; }
 </style>
@@ -63,8 +62,7 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 let db = JSON.parse(localStorage.getItem("manganest_v5")) || {
   users: [{id: "u1", name: "Simone", color: "#0984e3", groupId: "default"}, {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}],
   groups: [{id: "default", name: "Casa"}],
-  currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [],
-  backupCheckDone: false // Flag per il nuovo flusso richiesto
+  currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], backupCheckDone: false
 };
 
 const save=()=>localStorage.setItem("manganest_v5",JSON.stringify(db));
@@ -77,60 +75,43 @@ switchBtn.onclick=()=>{db.currentUser=null; save(); render();};
 function getActiveGroup() { const u = db.users.find(u => u.id === db.currentUser); return u ? u.groupId : "default"; }
 
 function render(){
-  // MODIFICA: PRIMA SCHERMATA BACKUP
   if(!db.backupCheckDone){
-    app.innerHTML = `
-      <div class="welcome-screen card">
-        <h2 style="color:var(--main)">Aggiornamento Dati</h2>
-        <p>Simone o Andrea hanno fatto modifiche su altri dispositivi?</p>
-        <input type="file" id="startImport" onchange="handleStartImport(this)" style="display:none">
-        <button class="btn-large ok" onclick="document.getElementById('startImport').click()">CARICA ULTIMO BACKUP (.json)</button>
-        <button class="btn-large" style="background:#dfe6e9; color:#2d3436" onclick="skipBackup()">NON CI SONO AGGIORNAMENTI, PROCEDI</button>
-      </div>`;
-    menu.innerHTML = ""; who.textContent = ""; switchBtn.style.display = "none";
-    return;
+    app.innerHTML = `<div class="welcome-screen card"><h2>Aggiornamento Dati</h2><p>Carica il backup più recente prima di iniziare.</p>
+      <input type="file" id="startImport" onchange="handleStartImport(this)" style="display:none">
+      <button class="btn-large ok" onclick="document.getElementById('startImport').click()">CARICA BACKUP (.json)</button>
+      <button class="btn-large" style="background:#dfe6e9; color:#2d3436" onclick="skipBackup()">PROCEDI SENZA BACKUP</button></div>`;
+    menu.innerHTML = ""; who.textContent = ""; switchBtn.style.display = "none"; return;
   }
-
-  // MODIFICA: SECONDA SCHERMATA CHI SEI
   if(!db.currentUser){
     app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>Chi sei?</h3><div id='userList' style='display:flex; justify-content:center; flex-wrap:wrap; gap:10px'></div>";
-    db.users.forEach(user=>{
-      const b = document.createElement("button"); b.textContent = user.name; b.style.background = user.color; b.className = "ok"; b.style.padding = "20px 30px";
-      b.onclick = () => { db.currentUser = user.id; save(); render(); };
+    db.users.forEach(u=>{
+      const b = document.createElement("button"); b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px 30px";
+      b.onclick = () => { db.currentUser = u.id; save(); render(); };
       document.getElementById('userList').appendChild(b);
     });
     return;
   }
-
   const u = db.users.find(u => u.id === db.currentUser);
   if(u) document.documentElement.style.setProperty("--main", u.color);
-  who.textContent = u ? `Utente: ${u.name}` : "";
+  who.textContent = `Utente: ${u.name}`;
   const group = db.groups.find(g => g.id === (u?.groupId || "default"));
-  document.getElementById("groupLabel").textContent = u ? `[Gruppo: ${group.name}]` : "";
-  switchBtn.style.display = u ? "inline" : "none";
+  document.getElementById("groupLabel").textContent = `[Gruppo: ${group.name}]`;
+  switchBtn.style.display = "inline";
   menu.innerHTML = "";
-  
   [["Database",searchDB],["Fumetteria",fumetteriaTab],["Segna come letto",readTab],["Statistiche",statsTab],["Consigli",adviceTab],["Aggiungi numeri",addVolumes],["Aggiungi serie",addSeries],["Utenti",users],["Backup",backupMenu]].forEach(([t,f])=>{
     const b = document.createElement("button"); b.textContent = t; b.onclick = () => f(app); menu.appendChild(b);
   });
   searchDB(app);
 }
 
-// Funzioni per il nuovo avvio
 window.handleStartImport=(input)=>{
   const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      db = {...data, backupCheckDone: true};
-      save(); render();
-    } catch(err) { alert("File non valido!"); }
-  };
+  reader.onload = (e) => { try { db = {...JSON.parse(e.target.result), backupCheckDone: true}; save(); render(); } catch(err) { alert("Errore file!"); } };
   reader.readAsText(input.files[0]);
 }
 window.skipBackup=()=>{ db.backupCheckDone = true; render(); }
 
-/* ================= CATALOGO (LOGICA ORIGINALE) ================= */
+/* ================= CATALOGO (ORIGINALE) ================= */
 function searchDB(c){
   c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><input type="text" id="dbSearch" placeholder="Cerca Saga o Serie..." oninput="doSearch()"></div><div id="searchRes"></div>`;
   doSearch();
@@ -160,7 +141,7 @@ window.doSearch=()=>{
   document.getElementById("searchRes").innerHTML = h || `<div class="card">Nessun risultato.</div>`;
 }
 
-/* ================= FUMETTERIA (LOGICA ORIGINALE) ================= */
+/* ================= FUMETTERIA (ORIGINALE) ================= */
 function fumetteriaTab(c){
   c.innerHTML = `<h2 class="section-title">Fumetteria</h2>
     <div class="card">
@@ -209,7 +190,7 @@ window.toggleOutgoing=(seriesId, number)=>{
     save(); renderFumetteria();
 }
 
-/* ================= STATISTICHE (LOGICA ORIGINALE) ================= */
+/* ================= STATISTICHE (ORIGINALE) ================= */
 function statsTab(c){
     const gid = getActiveGroup();
     const groupSeries = db.series.filter(s => s.groupId === gid && s.status !== 'Non Posseduta');
@@ -238,7 +219,7 @@ function statsTab(c){
     });
 }
 
-/* ================= CONSIGLI (MODIFICATI: ALFABETICO + GRID) ================= */
+/* ================= CONSIGLI (GRID + ALFABETICO + NO NON POSSEDUTE) ================= */
 function adviceTab(c){
     const gid = getActiveGroup(); const myId = db.currentUser;
     const groupMembers = db.users.filter(u => u.groupId === gid);
@@ -247,27 +228,26 @@ function adviceTab(c){
 
     const renderAdviceSection = (title, list) => {
         if(list.length === 0) return "";
-        // MODIFICA: ORDINE ALFABETICO
         list.sort((a,b) => a.name.localeCompare(b.name));
-
         return `<h4 style="margin: 20px 0 5px 0; color:var(--main)">${title}</h4><div class="advice-grid">${list.map(s => {
             const dots = groupMembers.map(m => {
                 const sVols = db.volumes.filter(v => v.seriesId === s.id).map(v=>v.id);
                 return db.read.some(r => r.userId === m.id && sVols.includes(r.volId)) ? `<span class="dot" style="background:${m.color}"></span>` : '';
             }).join('');
             return `<div class="advice-card"><div class="advice-dots">${dots}</div><img src="${s.img}"><div><b>${s.name}</b></div></div>`;
-        }).join('')}</div><hr style="border:none; border-bottom:1px solid #eee">`;
+        }).join('')}</div>`;
     };
 
-    const allS = db.series.filter(s => s.groupId === gid);
+    // MODIFICA: Solo serie possedute (non stato 'Non Posseduta')
+    const allS = db.series.filter(s => s.groupId === gid && s.status !== 'Non Posseduta');
     const getVids = (sid) => db.volumes.filter(v => v.seriesId === sid).map(v=>v.id);
     const getReadCount = (uid, vids) => db.read.filter(r => r.userId === uid && vids.includes(r.volId)).length;
 
-    const inCorso = allS.filter(s => s.status !== 'Non Posseduta' && (() => { const vids = getVids(s.id); const r = getReadCount(myId, vids); return r > 0 && r < vids.length; })());
-    const piuAvanti = allS.filter(s => s.status !== 'Non Posseduta' && (() => { const vids = getVids(s.id); const myR = getReadCount(myId, vids); const maxOther = Math.max(...otherUsers.map(o => getReadCount(o.id, vids)), 0); return myR > 0 && maxOther > myR; })());
-    const mySagas = [...new Set(allS.filter(s => getReadCount(myId, getVids(s.id)) > 0).map(s => s.sagaId))];
-    const altreSerieSaga = allS.filter(s => s.status !== 'Non Posseduta' && mySagas.includes(s.sagaId) && getReadCount(myId, getVids(s.id)) === 0);
-    const letteDaAltri = allS.filter(s => s.status !== 'Non Posseduta' && getReadCount(myId, getVids(s.id)) === 0 && otherUsers.some(o => getReadCount(o.id, getVids(s.id)) > 0));
+    const inCorso = allS.filter(s => (() => { const vids = getVids(s.id); const r = getReadCount(myId, vids); return r > 0 && r < vids.length; })());
+    const piuAvanti = allS.filter(s => (() => { const vids = getVids(s.id); const myR = getReadCount(myId, vids); const maxOther = Math.max(...otherUsers.map(o => getReadCount(o.id, vids)), 0); return myR > 0 && maxOther > myR; })());
+    const mySagas = [...new Set(db.series.filter(s => getReadCount(myId, getVids(s.id)) > 0).map(s => s.sagaId))];
+    const altreSerieSaga = allS.filter(s => mySagas.includes(s.sagaId) && getReadCount(myId, getVids(s.id)) === 0);
+    const letteDaAltri = allS.filter(s => getReadCount(myId, getVids(s.id)) === 0 && otherUsers.some(o => getReadCount(o.id, getVids(s.id)) > 0));
     const nessuno = allS.filter(s => groupMembers.every(m => getReadCount(m.id, getVids(s.id)) === 0));
 
     c.innerHTML += renderAdviceSection("Continua a leggere", inCorso);
@@ -277,7 +257,7 @@ function adviceTab(c){
     c.innerHTML += renderAdviceSection("Serie mai iniziate nel gruppo", nessuno);
 }
 
-/* ================= SEGNA LETTO (LOGICA ORIGINALE) ================= */
+/* ================= SEGNA COME LETTO (ORIGINALE) ================= */
 function readTab(c){
   c.innerHTML=`<h2 class="section-title">Segna come letto</h2><div class="card"><input type="text" id="readSearch" placeholder="Cerca serie..." oninput="renderReadList()"></div><div id="readArea"></div>`;
 }
@@ -295,7 +275,7 @@ window.renderReadList=()=>{
 }
 window.toggleRead=(volId)=>{ const idx=db.read.findIndex(r=>r.volId===volId && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId, userId:db.currentUser}); save(); renderReadList(); }
 
-/* ================= AGGIUNGI NUMERI (LOGICA ORIGINALE) ================= */
+/* ================= AGGIUNGI NUMERI (RIPRISTINATO) ================= */
 function addVolumes(c){
   c.innerHTML=`<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><input type="text" id="vSearch" placeholder="Scrivi il nome di una serie..." oninput="renderAddVolList()"></div><div id="vAddList"></div>`;
 }
@@ -314,7 +294,7 @@ window.bulkAdd=(sid)=>{
 }
 window.removeVol=(id)=>{ if(confirm("Eliminare?")){db.volumes=db.volumes.filter(v=>v.id!==id); save(); renderAddVolList();}}
 
-/* ================= AGGIUNGI SERIE (LOGICA ORIGINALE) ================= */
+/* ================= AGGIUNGI SERIE (RIPRISTINATO) ================= */
 function addSeries(c){
   const gid = getActiveGroup(); const sortedSagas = [...db.sagas].filter(s=>s.groupId===gid).sort((a,b)=>a.name.localeCompare(b.name));
   c.innerHTML = `<h2 class="section-title">Nuove Serie</h2><div class="card"><h3>Crea Saga</h3><input id="sagaNameOnly" placeholder="Nome Saga"><button class="ok" onclick="createSagaOnly()">Crea</button></div><div class="card"><h3>Aggiungi Serie</h3><input id="nsTitolo" placeholder="Titolo"><select id="nsSagaSelect"><option value="NEW">Nuova Saga (stesso nome serie)</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><input id="nsAutore" placeholder="Autore"><input id="nsEditore" placeholder="Editore"><input id="nsImg" placeholder="URL Immagine"><select id="nsStatus"><option value="In Corso">In Corso</option><option value="Terminata">Terminata</option><option value="Non Posseduta">Non Posseduta</option></select><button class="ok" onclick="createSerieFull()">Salva</button></div><h2 class="section-title">Gestione & Modifica</h2><div class="card"><select id="selectSagaEdit" onchange="renderEditArea()"><option value="">-- Seleziona Saga --</option>${sortedSagas.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="editArea"></div></div>`;
@@ -349,9 +329,8 @@ window.addG=()=>{ const n=document.getElementById("newGN").value; if(n){db.group
 window.upU=(id)=>{ const u=db.users.find(x=>x.id===id); u.name=document.getElementById(`un-${id}`).value; u.color=document.getElementById(`uc-${id}`).value; u.groupId=document.getElementById(`ug-${id}`).value; save(); render(); }
 window.delG=(id)=>{ if(confirm("Eliminare gruppo?")){db.groups=db.groups.filter(g=>g.id!==id); save(); users(app);}}
 
-function backupMenu(c){ c.innerHTML = `<h2 class="section-title">Backup</h2><div class="card"><button class="ok" style="width:100%" onclick="exportDB()">Esporta Backup</button></div><div class="card"><h3>Importa Backup</h3><input type="file" id="importFile" onchange="importDB(this)"><p class="small">L'importazione sovrascrive i dati attuali.</p></div>`; }
+function backupMenu(c){ c.innerHTML = `<h2 class="section-title">Backup</h2><div class="card"><button class="ok" style="width:100%" onclick="exportDB()">Esporta Backup</button></div><div class="card"><h3>Importa Backup</h3><input type="file" id="importFile" onchange="importDB(this)"><p class="small">Sovrascrive i dati attuali.</p></div>`; }
 window.exportDB=()=>{ 
-  // Rimuovo il flag temporaneo prima dell'export per sicurezza
   const exportData = {...db, backupCheckDone: false, currentUser: null};
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData)); 
   const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "manganest_backup.json"); dl.click(); 
