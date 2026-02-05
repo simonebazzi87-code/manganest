@@ -506,26 +506,42 @@
 
         window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
 
-        window.rFum = () => {
-            const gid = getActiveGroup(); let h = "";
+
+
+
+
+window.rFum = () => {
+            const gid = getActiveGroup(); 
+            let h = "";
+            
+            // Caso 1: Tab "DA INIZIARE"
             if (curFumTab === "da iniziare") {
                 const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
-                h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE:</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna.'}</div>
-                     <div class="card"><h3>Wishlist</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
-                db.wishlist.filter(w => w.groupId === gid).forEach(w => { h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; });
-            } else {
-                db.series.filter(s => s.groupId === gid && s.status !== "Da Iniziare").sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
+                h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE:</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie impostata come "Da Iniziare".'}</div>
+                     <div class="card"><h3>Wishlist (Appunti)</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
+                db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
+                    h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; 
+                });
+            } 
+            // Caso 2: Altre Tab (Tutto, Da Prendere, Mancanti)
+            else {
+                db.series.filter(s => s.groupId === gid && s.status !== "Da Iniziare")
+                .sort((a,b)=>a.name.localeCompare(b.name))
+                .forEach(sr => {
                     const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
                     const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
                     const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
                     
-                    // Logica tasto +: guarda il massimo tra quello che hai e quello già in lista
+                    // Logica Tasto NEXT: guarda il più alto tra posseduti e già in lista
                     const maxL = inL.length ? Math.max(...inL) : 0;
                     const nextN = Math.max(maxP, maxL) + 1;
 
-                    let show = (curFumTab === "tutto") || (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || (curFumTab === "mancanti" && gaps.length > 0);
+                    let show = (curFumTab === "tutto") || 
+                               (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || 
+                               (curFumTab === "mancanti" && gaps.length > 0);
+
                     if (show) { 
-                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px; height:60px; object-fit:cover"><div style="flex:1"><b>${sr.name}</b>
+                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px"><div style="flex:1"><b>${sr.name}</b>
                         <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
                             ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
                             ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
@@ -534,8 +550,21 @@
                     }
                 });
             }
-            document.getElementById("fList").innerHTML = h || "Nessuna serie.";
+            document.getElementById("fList").innerHTML = h || "Nessuna serie trovata.";
         };
+
+
+
+
+
+
+
+
+
+
+
+
+        
 
         window.addWi = () => { const t = document.getElementById("wiT").value; if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }};
         window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
