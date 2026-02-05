@@ -58,32 +58,40 @@
         
         let statsData = { series: {}, sagas: {} };
         let curFumTab = "tutto";
+        let sessionStarted = false;
         const save = () => localStorage.setItem("manganest_v5", JSON.stringify(db));
         const app = document.getElementById("app");
         const menu = document.getElementById("menu");
 
         function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
-        function render() {
-    // Se non ci sono utenti, mostra la schermata di benvenuto/caricamento
-    if (!db.users || db.users.length === 0) {
+
+function render() {
+    // Schermata di avvio (chiesta sempre all'apertura della pagina)
+    if (!sessionStarted) {
         app.innerHTML = `
             <div style="text-align:center; padding:50px 20px;">
-                <h1 style="color:var(--main); font-size:2rem; margin-bottom:10px;">Benvenuto</h1>
-                <p style="color:#666; margin-bottom:30px;">Sembra che non ci siano dati. Come vuoi procedere?</p>
+                <h1 style="color:var(--main); font-size:2.5rem; margin-bottom:10px;">MangaNest</h1>
+                <p style="color:#666; margin-bottom:30px;">Bentornato Simone! Come vuoi procedere oggi?</p>
                 
-                <button class="ok" onclick="document.getElementById('importFileInit').click()">
-                    CARICA BACKUP (JSON)
+                <button class="ok" style="width:100%; margin-bottom:15px; padding:20px" onclick="document.getElementById('importFileInit').click()">
+                    CARICA NUOVO BACKUP (JSON)
                 </button>
                 <input type="file" id="importFileInit" onchange="impDB(this)" style="display:none">
                 
-                <div style="margin: 20px 0; color:#999;">— oppure —</div>
-                
-                <button class="ok" style="background:var(--dark)" onclick="initDefault()">
-                    INIZIA DA ZERO
+                <button class="ok" style="width:100%; background:var(--dark); padding:20px" onclick="sessionStarted=true; render();">
+                    PROSEGUI CON DATI LOCALI
                 </button>
+                
+                <p style="margin-top:30px; font-size:12px; color:#999;">Usa "Prosegui" se i dati nel browser sono già aggiornati.</p>
             </div>`;
         return;
+    }
+
+    // Se non ci sono utenti dopo il caricamento, inizializza default
+    if (!db || !db.users || db.users.length === 0) { 
+        initNew(); 
+        return; 
     }
 
     // Se non c'è un utente selezionato, mostra la scelta profilo
@@ -91,6 +99,43 @@
         selectUser(); 
         return; 
     }
+
+    const u = db.users.find(x => x.id === db.currentUser);
+    if(!u) { db.currentUser = null; selectUser(); return; }
+    
+    // Aggiorna interfaccia utente
+    document.documentElement.style.setProperty("--main", u.color);
+    document.getElementById("who").textContent = u.name;
+    document.getElementById("switchUser").style.display = "inline";
+    const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
+    document.getElementById("groupLabel").textContent = `[${g.name}]`;
+    
+    // Genera menu
+    menu.innerHTML = "";
+    [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
+        const b = document.createElement("button"); 
+        b.textContent = t;
+        b.className = (curTab === t) ? 'active' : '';
+        b.onclick = () => { 
+            curTab = t;
+            Array.from(menu.children).forEach(x => x.classList.remove('active')); 
+            b.classList.add('active'); 
+            f(app); 
+        };
+        menu.appendChild(b);
+    });
+
+    // Mostra la tab corrente o quella di default
+    if(curTab === "DATABASE") searchDB(app);
+    else if(curTab === "FUMETTERIA") fumetteriaTab(app);
+    // ... aggiungi altri se necessario, ma di default carichiamo searchDB
+    else searchDB(app);
+}
+
+
+
+
+        
 
     // Caricamento normale dell'interfaccia
     const u = db.users.find(x => x.id === db.currentUser);
@@ -533,69 +578,64 @@ function initDefault() {
 
 
 
-
 window.rFum = () => {
     const gid = getActiveGroup(); 
     let h = "";
     
-    // Recuperiamo tutte le serie del gruppo
-    const allSeries = db.series.filter(s => s.groupId === gid);
-
+    // 1. SCHEDA "DA INIZIARE" (NUOVA LOGICA CON FOTO)
     if (curFumTab === "da iniziare") {
-        // Filtro robusto: status contiene "iniziare" OPPURE non ci sono volumi posseduti
-        const sDaI = allSeries.filter(s => {
-            const statusStr = (s.status || "").toLowerCase();
-            const noVolumes = db.volumes.filter(v => v.seriesId === s.id).length === 0;
-            return statusStr.includes("iniziare") || noVolumes;
+        const sDaI = db.series.filter(s => {
+            const hasNoVols = db.volumes.filter(v => v.seriesId === s.id).length === 0;
+            const statusMatch = (s.status || "").toLowerCase().includes("iniziare");
+            return s.groupId === gid && (hasNoVols || statusMatch);
         });
 
-        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
-                <b>SERIE DA INIZIARE:</b>
-             </div>`;
+        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE (O CON 0 VOLUMI):</b></div>`;
         
         if (sDaI.length === 0) {
-            h += `<p style="text-align:center; color:#999; margin-top:10px">Nessuna serie da iniziare trovata.</p>`;
-        } else {
-            sDaI.sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
-                h += `
-                <div class="card">
+            h += `<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie da iniziare.</p>`;
+        }
+
+        sDaI.sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
+            h += `<div class="card">
                     <div class="row-edit">
-                        <img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px">
+                        <img src="${sr.img}" class="cover-big" style="width:70px; height:100px; object-fit:cover; border-radius:4px">
                         <div style="flex:1">
                             <b>${sr.name}</b><br>
-                            <small style="color:#666">Stato attuale: ${sr.status}</small>
-                            <div style="margin-top:8px">
-                                <button class="ok" style="width:auto; padding:5px 12px; font-size:12px; background:var(--blue)" onclick="tglOut('${sr.id}', 1)">+ METTI VOL. 1 IN LISTA</button>
+                            <small style="color:#666">${sr.publisher || ''} - Stato: ${sr.status}</small>
+                            <div style="margin-top:10px">
+                                <button class="ok" style="padding:6px 12px; font-size:12px; background:var(--blue)" onclick="tglOut('${sr.id}', 1)">
+                                    + METTI VOL. 1 IN LISTA
+                                </button>
                             </div>
                         </div>
                     </div>
-                </div>`;
-            });
-        }
+                  </div>`;
+        });
 
-        // Aggiungiamo la Wishlist testuale in fondo
-        h += `<div class="card"><h3>Wishlist (Appunti rapidi)</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
+        // Wishlist in fondo alla scheda
+        h += `<div class="card" style="margin-top:20px"><h3>Wishlist (Appunti)</h3><div style="display:flex; gap:5px"><input id="wiT" placeholder="Titolo" style="flex:2"><input id="wiV" type="number" placeholder="Vol" style="flex:1"></div><button class="ok" style="width:100%; margin-top:5px" onclick="addWi()">AGGIUNGI</button></div>`;
         db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
-            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:10px"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; 
+            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:10px"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" style="padding:5px 10px" onclick="delWi('${w.id}')">X</button></div>`; 
         });
     } 
+    
+    // 2. TUTTE LE ALTRE SCHEDE (LOGICA ORIGINALE NEST6)
     else {
-        // Altre Tab: Mostriamo le serie "In Corso" che sono già state iniziate
-        allSeries.filter(s => {
-            const isToStart = (s.status || "").toLowerCase().includes("iniziare") || db.volumes.filter(v => v.seriesId === s.id).length === 0;
-            return s.status === "In Corso" && !isToStart;
-        })
+        db.series.filter(s => s.groupId === gid && s.status === "In Corso")
         .sort((a,b)=>a.name.localeCompare(b.name))
         .forEach(sr => {
             const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
             const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
             const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
+            
             const maxL = inL.length ? Math.max(...inL) : 0;
             const nextN = Math.max(maxP, maxL) + 1;
 
-            let show = (curFumTab === "tutto") || 
-                       (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || 
-                       (curFumTab === "mancanti" && gaps.length > 0);
+            let show = false;
+            if (curFumTab === "tutto") show = true;
+            if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
+            if (curFumTab === "mancanti" && gaps.length > 0) show = true;
 
             if (show) { 
                 h += `<div class="card">
@@ -614,7 +654,7 @@ window.rFum = () => {
             }
         });
     }
-    document.getElementById("fList").innerHTML = h || '<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie da mostrare in questa categoria.</p>';
+    document.getElementById("fList").innerHTML = h || '<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie trovata.</p>';
 };
 
 
