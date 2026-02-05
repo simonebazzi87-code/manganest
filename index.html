@@ -514,46 +514,64 @@ window.rFum = () => {
     const gid = getActiveGroup(); 
     let h = "";
     
-    // 1. GESTIONE TAB "DA INIZIARE"
+    // Recuperiamo tutte le serie del gruppo
+    const allSeries = db.series.filter(s => s.groupId === gid);
+
     if (curFumTab === "da iniziare") {
-        // Cerchiamo le serie che hanno la parola "iniziare" nello stato (non importa maiuscole o minuscole)
-        const sDaI = db.series.filter(s => s.groupId === gid && s.status.toLowerCase().includes("iniziare"));
-        
+        // Filtro robusto: status contiene "iniziare" OPPURE non ci sono volumi posseduti
+        const sDaI = allSeries.filter(s => {
+            const statusStr = (s.status || "").toLowerCase();
+            const noVolumes = db.volumes.filter(v => v.seriesId === s.id).length === 0;
+            return statusStr.includes("iniziare") || noVolumes;
+        });
+
         h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
-                <b>SERIE DA INIZIARE:</b><br>
-                ${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie trovata.'}
-             </div>
-             <div class="card">
-                <h3>Wishlist (Appunti)</h3>
-                <input id="wiT" placeholder="Titolo">
-                <input id="wiV" type="number" placeholder="Volumi">
-                <button class="ok" onclick="addWi()">AGGIUNGI</button>
+                <b>SERIE DA INIZIARE:</b>
              </div>`;
         
+        if (sDaI.length === 0) {
+            h += `<p style="text-align:center; color:#999; margin-top:10px">Nessuna serie da iniziare trovata.</p>`;
+        } else {
+            sDaI.sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
+                h += `
+                <div class="card">
+                    <div class="row-edit">
+                        <img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px">
+                        <div style="flex:1">
+                            <b>${sr.name}</b><br>
+                            <small style="color:#666">Stato attuale: ${sr.status}</small>
+                            <div style="margin-top:8px">
+                                <button class="ok" style="width:auto; padding:5px 12px; font-size:12px; background:var(--blue)" onclick="tglOut('${sr.id}', 1)">+ METTI VOL. 1 IN LISTA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        // Aggiungiamo la Wishlist testuale in fondo
+        h += `<div class="card"><h3>Wishlist (Appunti rapidi)</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
         db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
-            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center">
-                    <span><b>${w.title}</b> (${w.vols} vol)</span>
-                    <button class="danger" onclick="delWi('${w.id}')">X</button>
-                  </div>`; 
+            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:10px"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; 
         });
     } 
-    // 2. GESTIONE ALTRE TAB (Tutto, Da Prendere, Mancanti)
     else {
-        // Mostriamo SOLO le serie "In Corso"
-        db.series.filter(s => s.groupId === gid && s.status === "In Corso")
+        // Altre Tab: Mostriamo le serie "In Corso" che sono già state iniziate
+        allSeries.filter(s => {
+            const isToStart = (s.status || "").toLowerCase().includes("iniziare") || db.volumes.filter(v => v.seriesId === s.id).length === 0;
+            return s.status === "In Corso" && !isToStart;
+        })
         .sort((a,b)=>a.name.localeCompare(b.name))
         .forEach(sr => {
             const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
             const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
             const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
-            
             const maxL = inL.length ? Math.max(...inL) : 0;
             const nextN = Math.max(maxP, maxL) + 1;
 
-            let show = false;
-            if (curFumTab === "tutto") show = true;
-            if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
-            if (curFumTab === "mancanti" && gaps.length > 0) show = true;
+            let show = (curFumTab === "tutto") || 
+                       (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || 
+                       (curFumTab === "mancanti" && gaps.length > 0);
 
             if (show) { 
                 h += `<div class="card">
@@ -572,9 +590,8 @@ window.rFum = () => {
             }
         });
     }
-    document.getElementById("fList").innerHTML = h || '<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie trovata.</p>';
+    document.getElementById("fList").innerHTML = h || '<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie da mostrare in questa categoria.</p>';
 };
-
 
 
 
