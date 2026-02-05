@@ -66,118 +66,134 @@
 
         function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
+
+
+
+
 function render() {
-    // Schermata iniziale: mostrata sempre al refresh (F5)
+    // 1. Schermata iniziale (Chesta sempre all'avvio)
     if (!sessionStarted) {
         app.innerHTML = `
             <div style="text-align:center; padding:50px 20px;">
                 <h1 style="color:var(--main); font-size:2.5rem; margin-bottom:10px;">MangaNest</h1>
                 <p style="color:#666; margin-bottom:30px;">Bentornato Simone!<br>Cosa vuoi fare?</p>
-                <button class="ok" style="width:100%; margin-bottom:15px; padding:20px; font-size:16px" onclick="document.getElementById('importFileInit').click()">
-                    📂 CARICA BACKUP (JSON)
-                </button>
+                <button class="ok" style="width:100%; margin-bottom:15px; padding:20px; font-size:16px" onclick="document.getElementById('importFileInit').click()">📂 CARICA BACKUP (JSON)</button>
                 <input type="file" id="importFileInit" onchange="impDB(this)" style="display:none">
-                <button class="ok" style="width:100%; background:var(--dark); padding:20px; font-size:16px" onclick="sessionStarted=true; render();">
-                    🚀 PROSEGUI CON DATI LOCALI
-                </button>
+                <button class="ok" style="width:100%; background:var(--dark); padding:20px; font-size:16px" onclick="sessionStarted=true; render();">🚀 PROSEGUI CON DATI LOCALI</button>
             </div>`;
         return;
     }
 
+    // 2. Controllo Database
     if (!db || !db.users || db.users.length === 0) { 
         db = { users: [{id: "u1", name: "Simone", color: "#6c5ce7", groupId: "default"}], groups: [{id: "default", name: "Principale"}], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
         save();
     }
 
+    // 3. Selezione Utente
     if (!db.currentUser) { selectUser(); return; }
 
     const u = db.users.find(x => x.id === db.currentUser);
     if(!u) { db.currentUser = null; selectUser(); return; }
     
+    // 4. Setup Interfaccia
     document.documentElement.style.setProperty("--main", u.color);
     document.getElementById("who").textContent = u.name;
     document.getElementById("switchUser").style.display = "inline";
     const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
     document.getElementById("groupLabel").textContent = `[${g.name}]`;
     
+    // 5. Menu
     menu.innerHTML = "";
     [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
         const b = document.createElement("button"); 
         b.textContent = t;
         if (curTab === t) b.classList.add('active');
-        b.onclick = () => { 
-            curTab = t;
-            Array.from(menu.children).forEach(x => x.classList.remove('active')); 
-            b.classList.add('active'); 
-            f(app); 
-        };
+        b.onclick = () => { curTab = t; render(); };
         menu.appendChild(b);
     });
 
-    if(curTab === "FUMETTERIA") fumetteriaTab(app);
-    else if(curTab === "SERIE") addSeries(app);
-    else searchDB(app);
-}
-
-
-    // Se non ci sono utenti dopo il caricamento, inizializza default
-    if (!db || !db.users || db.users.length === 0) { 
-        initNew(); 
-        return; 
-    }
-
-    // Se non c'è un utente selezionato, mostra la scelta profilo
-    if (!db.currentUser) { 
-        selectUser(); 
-        return; 
-    }
-
-    const u = db.users.find(x => x.id === db.currentUser);
-    if(!u) { db.currentUser = null; selectUser(); return; }
-    
-    // Aggiorna interfaccia utente
-    document.documentElement.style.setProperty("--main", u.color);
-    document.getElementById("who").textContent = u.name;
-    document.getElementById("switchUser").style.display = "inline";
-    const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
-    document.getElementById("groupLabel").textContent = `[${g.name}]`;
-    
-    // Genera menu
-    menu.innerHTML = "";
-    [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
-        const b = document.createElement("button"); 
-        b.textContent = t;
-        b.className = (curTab === t) ? 'active' : '';
-        b.onclick = () => { 
-            curTab = t;
-            Array.from(menu.children).forEach(x => x.classList.remove('active')); 
-            b.classList.add('active'); 
-            f(app); 
-        };
-        menu.appendChild(b);
-    });
-
-    // Mostra la tab corrente o quella di default
+    // 6. Caricamento Tab
     if(curTab === "DATABASE") searchDB(app);
+    else if(curTab === "SERIE") addSeries(app);
+    else if(curTab === "NUMERI") addVolumes(app);
+    else if(curTab === "LETTO") readTab(app);
+    else if(curTab === "CONSIGLI") adviceTab(app);
+    else if(curTab === "STATISTICHE") statsTab(app);
     else if(curTab === "FUMETTERIA") fumetteriaTab(app);
-    // ... aggiungi altri se necessario, ma di default carichiamo searchDB
+    else if(curTab === "UTENTI") usersTab(app);
+    else if(curTab === "BACKUP") backupMenu(app);
     else searchDB(app);
 }
+
+function selectUser() {
+    app.innerHTML = `<div style="text-align:center; padding:40px 20px;"><h2 class="section-title" style="border:none; text-align:center">CHI SEI?</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:20px">${db.users.map(u => `<button class="ok" style="background:${u.color}; padding:20px" onclick="setU('${u.id}')">${u.name}</button>`).join('')}</div></div>`;
+}
+window.setU = (id) => { db.currentUser = id; save(); render(); };
+
+function searchDB(c) { c.innerHTML = `<h2 class="section-title">DATABASE</h2><div class="card"><input type="text" id="dbS" placeholder="Cerca..." oninput="doS()"></div><div id="sRes"></div>`; doS(); }
+window.doS = () => {
+    const q = document.getElementById("dbS")?.value.toLowerCase() || "";
+    const res = document.getElementById("sRes"); if(!res) return;
+    let h = "";
+    db.sagas.filter(s => s.name.toLowerCase().includes(q)).forEach(s => { h += `<div class="card" onclick="viewSaga('${s.id}')"><b>${s.name}</b> <small>(Saga)</small></div>`; });
+    db.series.filter(s => s.name.toLowerCase().includes(q)).forEach(s => { h += `<div class="card" onclick="viewSeries('${s.id}')"><b>${s.name}</b> <small>(${s.publisher})</small></div>`; });
+    res.innerHTML = h;
+};
+
+function fumetteriaTab(c) {
+    c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2><div class="tabs-fume">
+        <button class="tab-f-btn ${curFumTab==='tutto'?'active':''}" onclick="curFumTab='tutto'; rFum()">TUTTO</button>
+        <button class="tab-f-btn ${curFumTab==='da prendere'?'active':''}" onclick="curFumTab='da prendere'; rFum()">DA PRENDERE</button>
+        <button class="tab-f-btn ${curFumTab==='mancanti'?'active':''}" onclick="curFumTab='mancanti'; rFum()">MANCANTI</button>
+        <button class="tab-f-btn ${curFumTab==='da iniziare'?'active':''}" onclick="curFumTab='da iniziare'; rFum()">DA INIZIARE</button>
+    </div><div id="fList"></div>`;
+    rFum();
+}
+
+window.rFum = () => {
+    const gid = getActiveGroup(); let h = "";
+    if (curFumTab === "da iniziare") {
+        const sDaI = db.series.filter(s => {
+            const hasNoVols = db.volumes.filter(v => v.seriesId === s.id).length === 0;
+            const statusMatch = (s.status || "").toLowerCase().includes("iniziare");
+            return s.groupId === gid && (hasNoVols || statusMatch);
+        });
+        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE NUOVE:</b></div>`;
+        sDaI.forEach(sr => {
+            h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:70px; height:100px; object-fit:cover; border-radius:4px"><div style="flex:1"><b>${sr.name}</b><br><small>${sr.status}</small><br><button class="ok" style="margin-top:10px" onclick="tglOut('${sr.id}', 1)">+ VOL 1</button></div></div></div>`;
+        });
+    } else {
+        // Logica standard per le altre tab (Tutto/Prendere/Mancanti)
+        db.series.filter(s => s.groupId === gid && s.status === "In Corso").forEach(sr => {
+            const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
+            const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
+            const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number);
+            const nextN = Math.max(maxP, (inL.length?Math.max(...inL):0)) + 1;
+            let show = (curFumTab === "tutto") || (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || (curFumTab === "mancanti" && gaps.length > 0);
+            if (show) {
+                h += `<div class="card"><b>${sr.name}</b><div style="display:flex; gap:5px; margin-top:5px">
+                    ${gaps.map(n => `<button class="danger" onclick="tglOut('${sr.id}', ${n})">${n}</button>`).join('')}
+                    ${inL.map(n => `<button class="bg-warn" onclick="tglOut('${sr.id}', ${n})">${n} X</button>`).join('')}
+                    <button class="ok" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button>
+                </div></div>`;
+            }
+        });
+    }
+    document.getElementById("fList").innerHTML = h;
+};
+// Nota: qui andrebbero anche addSeries, addVolumes, ecc. ma per ora ripristiniamo l'accesso.
+
+
+
+
+
+
 
 
 
 
         
-
-    // Caricamento normale dell'interfaccia
-    const u = db.users.find(x => x.id === db.currentUser);
-    if(!u) { db.currentUser = null; selectUser(); return; }
-    
-    document.getElementById("uName").innerText = u.name;
-    document.getElementById("uName").style.color = u.color;
-    showTab(curTab);
-}
-
 
 function initDefault() {
     const gId = crypto.randomUUID();
