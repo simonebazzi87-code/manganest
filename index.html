@@ -1,349 +1,619 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<title>MangaNest Pro - Simone & Andrea</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-:root{--main:#6c5ce7; --warn:#f1c40f; --danger:#e74c3c; --success:#27ae60; --blue:#3498db; --bg:#f5f6fa; --dark:#2d3436}
-body{margin:0;font-family:system-ui, -apple-system, sans-serif;background:var(--bg); color:var(--dark)}
-header{background:var(--main);color:#fff;padding:10px 15px;display:flex;justify-content:space-between;align-items:center}
-nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:100}
-nav button{height:40px;border:none;border-radius:6px;padding:0 12px;cursor:pointer;background:#eee;font-weight:bold;font-size:12px}
-nav button.active{background:var(--main);color:#fff}
-main{padding:12px; padding-bottom:100px}
-.card{background:#fff;border-radius:8px;padding:15px;margin-bottom:12px;border:1px solid #eee;box-shadow: 0 2px 4px rgba(0,0,0,0.05)}
-.row-edit { display: flex; gap: 15px; align-items: flex-start; padding: 10px; flex-wrap: nowrap; }
-.col-cover { flex: 0 0 100px; } 
-.cover-big{width:100px; height:150px; object-fit:cover; border-radius:6px; background:#ccc; border:1px solid #ddd;}
-input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-radius:6px; box-sizing: border-box; font-size:14px}
-.ok{background:var(--main);color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
-.danger{background:var(--danger);color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
-.pill-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 15px; }
-.pill { padding: 6px 4px; border-radius: 5px; font-size: 9px; font-weight: bold; background: #fff; border: 1px solid #ddd; cursor: pointer; flex: 1; min-width: 60px; text-align: center; }
-.vol-container { display: flex; flex-direction: column; align-items: center; margin: 4px; min-width: 45px;}
-.volumeStatic{padding:5px 8px; border-radius:6px; border:1.5px solid #eee; background:#fff; font-size:14px; font-weight:bold; width: 100%; text-align: center; box-sizing: border-box;}
-.volumeBtn{padding:8px; border-radius:6px; border:1px solid #ddd; background:#f9f9f9; cursor:pointer; font-weight:bold; width: 100%;}
-.section-title{border-left: 4px solid var(--main); padding-left: 10px; margin: 20px 0 10px 0; font-size:18px; font-weight:bold}
-.badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; display: inline-block; margin-bottom: 5px; }
-.bg-warn { background: var(--warn); color: #333; }
-.bg-danger { background: var(--danger); }
-.bg-blue { background: var(--blue); }
-.bg-success { background: var(--success); }
-.progress-bar { height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin: 8px 0; border: 1px solid #ddd; }
-.progress-fill { height: 100%; transition: width 0.3s; }
-.advice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
-.advice-card { font-size: 11px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
-.advice-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 4px; margin-bottom: 8px}
-.tabs-fume { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; }
-.tab-f-btn { flex: 1; padding: 10px; border: none; background: #ddd; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 10px; white-space: nowrap; }
-.tab-f-btn.active { background: var(--main); color: #fff; }
-#ddBox { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); z-index: 1000; max-height: 80vh; overflow-y: auto; display: none; }
-#ddOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
-</style>
+    <meta charset="UTF-8">
+    <title>MangaNest Pro 2026</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root{--main:#6c5ce7; --warn:#f1c40f; --danger:#e74c3c; --success:#27ae60; --blue:#3498db; --bg:#f5f6fa; --dark:#2d3436}
+        body{margin:0;font-family:system-ui, -apple-system, sans-serif;background:var(--bg); color:var(--dark)}
+        header{background:var(--main);color:#fff;padding:10px 15px;display:flex;justify-content:space-between;align-items:center}
+        nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:100}
+        nav button{height:40px;border:none;border-radius:6px;padding:0 12px;cursor:pointer;background:#eee;font-weight:bold;font-size:11px}
+        nav button.active{background:var(--main);color:#fff}
+        main{padding:12px; padding-bottom:100px}
+        .card{background:#fff;border-radius:8px;padding:15px;margin-bottom:12px;border:1px solid #eee;box-shadow: 0 2px 4px rgba(0,0,0,0.05)}
+        .row-edit { display: flex; gap: 15px; align-items: flex-start; }
+        .cover-big{width:100px; height:150px; object-fit:cover; border-radius:6px; background:#ccc; border:1px solid #ddd;}
+        input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-radius:6px; box-sizing: border-box; font-size:14px}
+        .ok{background:var(--main);color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
+        .danger{background:var(--danger);color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;font-weight:bold}
+        .vol-container { display: flex; flex-direction: column; align-items: center; margin: 4px; min-width: 45px;}
+        .volumeStatic{padding:5px 8px; border-radius:6px; border:1.5px solid #eee; background:#fff; font-size:14px; font-weight:bold; width: 100%; text-align: center;}
+        .volumeBtn{padding:8px; border-radius:6px; border:1px solid #ddd; background:#f9f9f9; cursor:pointer; font-weight:bold; width: 100%;}
+        .read-indicators { display: flex; gap: 3px; height: 8px; margin-top: 4px; justify-content: center; min-height:8px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
+        .section-title{border-left: 4px solid var(--main); padding-left: 10px; margin: 20px 0 10px 0; font-size:18px; font-weight:bold}
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; display: inline-block; margin-bottom: 5px; }
+        .bg-warn { background: var(--warn); color: #333; }
+        .bg-danger { background: var(--danger); }
+        .bg-blue { background: var(--blue); }
+        .bg-success { background: var(--success); }
+        .progress-bar { height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin: 8px 0; border: 1px solid #ddd; }
+        .progress-fill { height: 100%; transition: width 0.3s; }
+        .advice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+        .advice-card { font-size: 11px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
+        .advice-card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 4px; margin-bottom: 8px}
+        .tabs-fume { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; }
+        .tab-f-btn { flex: 1; padding: 10px; border: none; background: #ddd; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 10px; white-space: nowrap; }
+        .tab-f-btn.active { background: var(--main); color: #fff; }
+        #ddBox { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); z-index: 1000; max-height: 80vh; overflow-y: auto; display: none; }
+        #ddOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+    </style>
 </head>
 <body>
-<header>
-    <h2>MangaNest <span id="groupLabel" style="font-size:12px; opacity:0.8"></span></h2>
-    <div><span id="who"></span> <button id="switchUser" style="display:none;font-size:10px;margin-left:10px">Esci</button></div>
-</header>
-<nav id="menu"></nav>
-<main id="app"></main>
+    <header>
+        <h2>MangaNest <span id="groupLabel" style="font-size:12px; opacity:0.8"></span></h2>
+        <div><span id="who"></span> <button id="switchUser" style="display:none;font-size:10px;margin-left:5px">Esci</button></div>
+    </header>
+    <nav id="menu"></nav>
+    <main id="app"></main>
+    <div id="ddOverlay" onclick="closeDD()"></div>
+    <div id="ddBox"><div id="ddTitle" style="font-weight:bold;margin-bottom:10px"></div><div id="ddContent"></div></div>
 
-<div id="ddOverlay" onclick="closeDD()"></div>
-<div id="ddBox">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-        <h3 id="ddTitle" style="margin:0">Dettaglio</h3>
-        <button onclick="closeDD()" style="border:none; background:none; font-size:24px">&times;</button>
-    </div>
-    <div id="ddContent"></div>
-</div>
+    <script>
+        // --- DATABASE E VARIABILI GLOBALI ---
+        let db = JSON.parse(localStorage.getItem("manganest_v5")) || { 
+            users: [{id: "u1", name: "Simone", color: "#0984e3", groupId: "default"}, {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}], 
+            groups: [{id: "default", name: "Casa"}], 
+            currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] 
+        };
+        let statsData = { series: {} };
+        let curFumTab = "tutto";
+        const save = () => localStorage.setItem("manganest_v5", JSON.stringify(db));
+        const app = document.getElementById("app");
+        const menu = document.getElementById("menu");
 
-<script>
-let db = JSON.parse(localStorage.getItem("manganest_v5")) || { 
-    users: [{id: "u1", name: "Simone", color: "#0984e3", groupId: "default"}, {id: "u2", name: "Andrea", color: "#e84393", groupId: "default"}], 
-    groups: [{id: "default", name: "Casa"}], 
-    currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [] 
-};
-if(!db.outgoing) db.outgoing = [];
+        function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
-let backupCheckDone = false;
-let statsData = { series: {} };
-let curFumTab = "tutto";
-
-const save = () => localStorage.setItem("manganest_v5", JSON.stringify(db));
-const app = document.getElementById("app");
-const menu = document.getElementById("menu");
-const who = document.getElementById("who");
-const switchBtn = document.getElementById("switchUser");
-
-function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
-
-function render() {
-    if (!backupCheckDone) {
-        app.innerHTML = `<div class="card" style="text-align:center; padding:40px"><h2>MangaNest 2026</h2><p>Simone, vuoi caricare un backup?</p><input type="file" id="startImp" onchange="handleImp(this)" style="display:none"><button class="ok" style="width:100%" onclick="document.getElementById('startImp').click()">CARICA JSON</button><button style="width:100%; margin-top:10px; border:none; padding:10px" onclick="skipB()">SALTA</button></div>`;
-        return;
-    }
-    if (!db.currentUser) {
-        app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>Chi sei?</h3><div id='uL' style='display:flex; justify-content:center; gap:15px'></div>";
-        db.users.forEach(u => {
-            const b = document.createElement("button"); b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px";
-            b.onclick = () => { db.currentUser = u.id; save(); render(); };
-            document.getElementById('uL').appendChild(b);
-        });
-        return;
-    }
-    const u = db.users.find(u => u.id === db.currentUser);
-    document.documentElement.style.setProperty("--main", u.color);
-    who.textContent = u.name;
-    const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
-    document.getElementById("groupLabel").textContent = `[${g.name}]`;
-    switchBtn.style.display = "inline";
-    menu.innerHTML = "";
-    [ ["Database", searchDB], ["Serie", addSeries], ["Numeri", addVolumes], ["Letto", readTab], ["Consigli", adviceTab], ["Stats", statsTab], ["Fumetteria", fumetteriaTab], ["Utenti", usersTab], ["Backup", backupMenu] ].forEach(([t, f]) => {
-        const b = document.createElement("button"); b.textContent = t;
-        b.onclick = () => { Array.from(menu.children).forEach(x => x.classList.remove('active')); b.classList.add('active'); f(app); };
-        menu.appendChild(b);
-    });
-    searchDB(app);
-}
-
-window.handleImp = (i) => { const r = new FileReader(); r.onload=(e)=>{db=JSON.parse(e.target.result);backupCheckDone=true;save();render();}; r.readAsText(i.files[0]); };
-window.skipB = () => { backupCheckDone = true; render(); };
-switchBtn.onclick = () => { db.currentUser = null; save(); render(); };
-
-// --- DATABASE (FILTRO AUTORE + FOTO) ---
-function searchDB(c) { c.innerHTML = `<h2 class="section-title">Catalogo</h2><div class="card"><input type="text" id="dbS" placeholder="Cerca Saga, Serie, Autore..." oninput="doS()"></div><div id="sRes"></div>`; doS(); }
-window.doS = () => {
-    const q = (document.getElementById("dbS")?.value || "").toLowerCase();
-    const gid = getActiveGroup(); const mems = db.users.filter(u => u.groupId === gid);
-    let h = "";
-    db.sagas.filter(s => s.groupId === gid).sort((a,b) => a.name.localeCompare(b.name)).forEach(sg => {
-        const srs = db.series.filter(r => r.sagaId === sg.id && (sg.name.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || (r.authors||"").toLowerCase().includes(q)));
-        if (srs.length > 0) {
-            h += `<div class="card"><h3 style="color:var(--main); border-bottom:1px solid #eee">${sg.name}</h3>`;
-            srs.forEach(sr => {
-                const vs = db.volumes.filter(v => v.seriesId === sr.id).sort((a,b) => a.number - b.number);
-                h += `<div class="row-edit"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info">
-                ${getBadge(sr.status)}<br><b>${sr.name}</b><br><small>${sr.authors || ''}</small>
-                <div style="display:flex; flex-wrap:wrap; margin-top:10px">${vs.map(v => {
-                    const dots = mems.map(m => db.read.some(r => r.volId === v.id && r.userId === m.id) ? `<span class="dot" style="background:${m.color}"></span>` : '').join('');
-                    return `<div class="vol-container"><span class="volumeStatic">${v.number}</span><div class="read-indicators">${dots}</div></div>`;
-                }).join('')}</div></div></div>`;
-            });
-            h += `</div>`;
-        }
-    });
-    document.getElementById("sRes").innerHTML = h || "Nessun risultato.";
-};
-const getBadge = (s) => {
-    if(s === 'In Corso') return '<span class="badge bg-warn">IN CORSO</span>';
-    if(s === 'Terminata') return '<span class="badge bg-success">TERMINATA</span>';
-    if(s === 'Sospesa') return '<span class="badge bg-danger">SOSPESA</span>';
-    return '<span class="badge bg-blue">DA INIZIARE</span>';
-};
-
-// --- SERIE (SPOSTAMENTO + STATUS) ---
-function addSeries(c) {
-    const gid = getActiveGroup();
-    const sgs = [...db.sagas].filter(s => s.groupId === gid).sort((a,b) => a.name.localeCompare(b.name));
-    c.innerHTML = `<h2 class="section-title">Nuova Saga</h2><div class="card"><input id="newS" placeholder="Nome Saga"><button class="ok" onclick="cSaga()">Crea</button></div>
-    <div class="card"><h3>Nuova Serie</h3><input id="nsT" placeholder="Titolo"><select id="nsS"><option value="NEW">Nuova Saga</option>${sgs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><input id="nsA" placeholder="Autore"><input id="nsI" placeholder="URL Copertina"><select id="nsSt"><option value="In Corso">In Corso</option><option value="Terminata">Terminata</option><option value="Sospesa">Sospesa</option><option value="Da Iniziare">Da Iniziare</option></select><button class="ok" onclick="cSerie()">Salva</button></div>
-    <h2 class="section-title">Modifica</h2><div class="card"><select id="selS" onchange="rEdit()"><option value="">-- Seleziona Saga --</option>${sgs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select><div id="eArea"></div></div>`;
-}
-window.cSaga = () => { const n = document.getElementById("newS").value.trim(); if(n){db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app); }};
-window.cSerie = () => {
-    const t = document.getElementById("nsT").value; let sid = document.getElementById("nsS").value;
-    if(sid==="NEW"){ const ns={id:crypto.randomUUID(), name:t, groupId:getActiveGroup()}; db.sagas.push(ns); sid=ns.id; }
-    db.series.push({id:crypto.randomUUID(), name:t, sagaId:sid, groupId:getActiveGroup(), authors:document.getElementById("nsA").value, img:document.getElementById("nsI").value, status:document.getElementById("nsSt").value});
-    save(); addSeries(app);
-};
-window.rEdit = () => {
-    const sid = document.getElementById("selS").value; if(!sid) return;
-    const sgs = [...db.sagas].filter(s => s.groupId === getActiveGroup()).sort((a,b) => a.name.localeCompare(b.name));
-    let h = `<div class="card"><input id="esN" value="${db.sagas.find(s=>s.id===sid).name}"><button class="ok" onclick="uSaga('${sid}')">Rinomina Saga</button></div>`;
-    db.series.filter(s=>s.sagaId===sid).forEach(sr => {
-        h += `<div class="card"><div class="row-edit"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info">
-        <label style="font-size:10px">Sposta in Saga:</label><select id="mov-${sr.id}">${sgs.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${s.name}</option>`).join('')}</select>
-        <input id="t-${sr.id}" value="${sr.name}"><select id="s-${sr.id}"><option value="In Corso" ${sr.status==='In Corso'?'selected':''}>In Corso</option><option value="Terminata" ${sr.status==='Terminata'?'selected':''}>Terminata</option><option value="Sospesa" ${sr.status==='Sospesa'?'selected':''}>Sospesa</option><option value="Da Iniziare" ${sr.status==='Da Iniziare'?'selected':''}>Da Iniziare</option></select>
-        <button class="ok" onclick="uSr('${sr.id}')">Salva</button></div></div></div>`;
-    });
-    document.getElementById("eArea").innerHTML = h;
-};
-window.uSr = (id) => { const s = db.series.find(x=>x.id===id); s.name=document.getElementById(`t-${id}`).value; s.status=document.getElementById(`s-${id}`).value; s.sagaId=document.getElementById(`mov-${id}`).value; save(); rEdit(); };
-window.uSaga = (id) => { db.sagas.find(x=>x.id===id).name = document.getElementById("esN").value; save(); addSeries(app); };
-
-// --- NUMERI (FOTO + BLINDATO) ---
-function addVolumes(c) { c.innerHTML = `<h2 class="section-title">Aggiungi Numeri</h2><div class="card"><input type="text" id="vS" placeholder="Cerca serie..." oninput="rAV()"></div><div id="vAL"></div>`; }
-window.rAV = () => {
-    const q = (document.getElementById("vS").value).toLowerCase(); if(q.length<2) return;
-    document.getElementById("vAL").innerHTML = db.series.filter(s=>s.groupId===getActiveGroup() && s.name.toLowerCase().includes(q)).map(sr => {
-        const vs = db.volumes.filter(v=>v.seriesId===sr.id).sort((a,b)=>a.number-b.number);
-        return `<div class="card"><div class="row-edit"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info"><b>${sr.name}</b><br><div style="display:flex;gap:5px;margin-top:10px"><input type="number" id="st-${sr.id}" placeholder="Da" style="width:65px"><input type="number" id="en-${sr.id}" placeholder="A" style="width:65px"><button class="ok" onclick="bAdd('${sr.id}')">Add</button></div></div></div><div style="display:flex;flex-wrap:wrap;margin-top:10px">${vs.map(v => `<button class="volumeBtn" style="width:auto;margin:2px" onclick="remV('${v.id}')">${v.number}</button>`).join('')}</div></div>`;
-    }).join('');
-};
-window.bAdd = (sid) => {
-    const st=Number(document.getElementById(`st-${sid}`).value), en=Number(document.getElementById(`en-${sid}`).value)||st;
-    for(let i=st; i<=en; i++) if(!db.volumes.find(v=>v.seriesId===sid && v.number===i)) db.volumes.push({id:crypto.randomUUID(), seriesId:sid, number:i, groupId:getActiveGroup()});
-    save(); rAV();
-};
-window.remV = (id) => { if(confirm("Rimuovere?")){ db.volumes=db.volumes.filter(v=>v.id!==id); save(); rAV(); }};
-
-// --- LETTO (FOTO + BOTTONI) ---
-function readTab(c) { c.innerHTML = `<h2 class="section-title">Segna Letto</h2><div class="card"><input type="text" id="rS" placeholder="Cerca serie..." oninput="rRL()"></div><div id="rArea"></div>`; }
-window.rRL = () => {
-    const q = (document.getElementById("rS").value).toLowerCase(); if(q.length<2) return;
-    const uid = db.currentUser; const u = db.users.find(x=>x.id===uid);
-    document.getElementById("rArea").innerHTML = db.series.filter(s=>s.groupId===getActiveGroup() && s.name.toLowerCase().includes(q)).map(sr => {
-        const vs = db.volumes.filter(v=>v.seriesId===sr.id).sort((a,b)=>a.number-b.number);
-        return `<div class="card"><div class="row-edit"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info"><b>${sr.name}</b><div style="display:flex;flex-wrap:wrap;margin-top:10px">${vs.map(v => {
-            const isR = db.read.some(rd => rd.volId === v.id && rd.userId === uid);
-            return `<button class="volumeBtn" style="width:45px; margin:2px; ${isR ? `background:${u.color};color:white;border:none` : ''}" onclick="tglR('${v.id}')">${v.number}</button>`;
-        }).join('')}</div></div></div></div>`;
-    }).join('');
-};
-window.tglR = (vid) => { const idx = db.read.findIndex(r=>r.volId===vid && r.userId===db.currentUser); if(idx>-1) db.read.splice(idx,1); else db.read.push({volId:vid, userId:db.currentUser}); save(); rRL(); };
-
-// --- CONSIGLI (ORDINATI PER % + 4 VOCI) ---
-function adviceTab(c) {
-    c.innerHTML = `<h2 class="section-title">Consigli</h2><div class="card"><select id="adF" onchange="rAd()"><option value="CONT">Continua a leggere</option><option value="OTH">Gli altri sono più avanti di te</option><option value="NEW_OTH">Non hai iniziato, ma altri sì</option><option value="NONE">Nessuno ha iniziato</option></select><div style="margin-top:10px; display:flex; align-items:center; gap:8px"><input type="checkbox" id="ex1" onchange="rAd()" style="width:auto"> <label for="ex1">Escludi serie con 1 solo letto</label></div></div><div id="adRes"></div>`;
-    rAd();
-}
-window.rAd = () => {
-    const gid=getActiveGroup(), uid=db.currentUser, f=document.getElementById("adF").value, ex1=document.getElementById("ex1").checked;
-    const otherUsers = db.users.filter(u=>u.id!==uid && u.groupId===gid);
-    let list = [];
-    db.series.filter(s=>s.groupId===gid).forEach(s => {
-        const vids = db.volumes.filter(v=>v.seriesId===s.id).map(v=>v.id);
-        const myRead = db.read.filter(r=>r.userId===uid && vids.includes(r.volId)).length;
-        if(ex1 && myRead === 1) return;
-        const p = vids.length ? Math.round((myRead/vids.length)*100) : 0;
-        let show = false;
-        if(f==="CONT" && myRead > 0 && myRead < vids.length) show=true;
-        if(f==="OTH" || f==="NEW_OTH") {
-            const maxOth = Math.max(...otherUsers.map(u => db.read.filter(rd => rd.userId===u.id && vids.includes(rd.volId)).length), 0);
-            if(f==="OTH" && myRead > 0 && maxOth > myRead) show=true;
-            if(f==="NEW_OTH" && myRead === 0 && maxOth > 0) show=true;
-        }
-        if(f==="NONE" && myRead === 0 && !db.read.some(rd => vids.includes(rd.volId))) show=true;
-        if(show) list.push({...s, perc: p});
-    });
-    list.sort((a,b) => b.perc - a.perc);
-    document.getElementById("adRes").innerHTML = `<div class="advice-grid">${list.map(s => `<div class="advice-card"><img src="${s.img}"><b>${s.name}</b><br><span class="badge bg-success">${s.perc}%</span></div>`).join('')}</div>`;
-};
-
-// --- STATISTICHE (GENERALI, PERSONALI, DRILLDOWN) ---
-function statsTab(c) {
-    const gid = getActiveGroup();
-    const gSagas = db.sagas.filter(s=>s.groupId===gid);
-    const gSeries = db.series.filter(s=>s.groupId===gid);
-    const gVols = db.volumes.filter(v=>v.groupId===gid);
-    
-    let h = `<h2 class="section-title">Generali</h2><div class="card"><p>Saghe: <b>${gSagas.length}</b> | Serie: <b>${gSeries.length}</b> | Volumi: <b>${gVols.length}</b></p></div><h2 class="section-title">Personali</h2>`;
-
-    db.users.filter(u=>u.groupId===gid).forEach(u => {
-        const vRead = db.read.filter(r=>r.userId===u.id && gVols.some(v=>v.id===r.volId)).length;
-        const sCompl = gSeries.filter(sr => {
-            const vids = db.volumes.filter(v=>v.seriesId===sr.id).map(v=>v.id);
-            return vids.length > 0 && vids.every(id => db.read.some(r=>r.userId===u.id && r.volId===id));
-        }).length;
-        const sagCompl = gSagas.filter(sg => {
-            const srs = db.series.filter(s=>s.sagaId===sg.id);
-            return srs.length > 0 && srs.every(sr => {
-                const vids = db.volumes.filter(v=>v.seriesId===sr.id).map(v=>v.id);
-                return vids.length > 0 && vids.every(id => db.read.some(r=>r.userId===u.id && r.volId===id));
-            });
-        }).length;
-
-        const keys = ["0%", "1-25%", "25-50%", "50-75%", "75-99%", "100%"];
-        const serieD = {}; keys.forEach(k=>serieD[k]=[]);
-        gSeries.forEach(sr => {
-            const vids = db.volumes.filter(v=>v.seriesId===sr.id).map(v=>v.id);
-            const p = vids.length ? (db.read.filter(r=>r.userId===u.id && vids.includes(r.volId)).length/vids.length)*100 : 0;
-            let k = "0%"; if(p>=100)k="100%"; else if(p>=75)k="75-99%"; else if(p>=50)k="50-75%"; else if(p>=25)k="25-50%"; else if(p>0)k="1-25%";
-            serieD[k].push(sr);
-        });
-        const uid = u.id.replace(/\W/g,''); statsData.series[uid] = serieD;
-
-        h += `<div class="card" style="border-left:5px solid ${u.color}"><h3>${u.name}</h3>
-        <p>Saghe: ${sagCompl}/${gSagas.length}</p><div class="progress-bar"><div class="progress-fill" style="width:${(sagCompl/gSagas.length)*100}%; background:${u.color}"></div></div>
-        <p>Serie: ${sCompl}/${gSeries.length}</p><div class="progress-bar"><div class="progress-fill" style="width:${(sCompl/gSeries.length)*100}%; background:${u.color}"></div></div>
-        <p>Volumi: ${vRead}/${gVols.length}</p><div class="progress-bar"><div class="progress-fill" style="width:${(vRead/gVols.length)*100}%; background:${u.color}"></div></div>
-        <div class="pill-row">${keys.map(k=>`<button class="pill" onclick="openDD('${uid}','${k}','${u.name}')">${k}<br>${serieD[k].length}</button>`).join('')}</div></div>`;
-    });
-    c.innerHTML = h;
-}
-window.openDD = (uid, k, name) => {
-    const list = statsData.series[uid][k];
-    document.getElementById("ddTitle").textContent = `${name}: Serie ${k}`;
-    document.getElementById("ddContent").innerHTML = list.length ? list.map(i => `<div style="padding:10px; border-bottom:1px solid #eee"><b>${i.name}</b></div>`).join('') : "Nessuna.";
-    document.getElementById("ddOverlay").style.display = "block"; document.getElementById("ddBox").style.display = "block";
-};
-window.closeDD = () => { document.getElementById("ddOverlay").style.display="none"; document.getElementById("ddBox").style.display="none"; };
-
-// --- FUMETTERIA (4 SCHEDE + PLUS/MINUS) ---
-function fumetteriaTab(c){
-    c.innerHTML = `<h2 class="section-title">Fumetteria</h2>
-    <div class="tabs-fume">
-        ${["tutto", "da prendere", "mancanti", "da iniziare"].map(t=>`<button class="tab-f-btn ${curFumTab===t?'active':''}" onclick="setFumTab('${t}')">${t.toUpperCase()}</button>`).join('')}
-    </div><div id="fList"></div>`;
-    rFum();
-}
-window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
-window.rFum = () => {
-    const gid = getActiveGroup(); let h = "";
-    const srs = db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name));
-    
-    if(curFumTab === "da iniziare") {
-        h = `<div class="card"><h3>Pianifica Nuove Serie</h3><p>Funzione per aggiungere volumi fittizi (coming soon).</p></div>`;
-    } else {
-        srs.forEach(sr => {
-            const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v=>v.number);
-            const max = vs.length ? Math.max(...vs) : 0;
-            let gaps = []; for(let i=1; i<max; i++) if(!vs.includes(i)) gaps.push(i);
-            let inL = db.outgoing.filter(o => o.seriesId === sr.id).sort((a,b)=>a.number-b.number);
-            let nxt = inL.length ? Math.max(...inL.map(o=>o.number)) + 1 : max + 1;
-            
-            let show = false;
-            if(curFumTab === "tutto" && (sr.status === "In Corso" || gaps.length > 0 || inL.length > 0)) show = true;
-            if(curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
-            if(curFumTab === "mancanti" && gaps.length > 0) show = true;
-
-            if(show) {
-                h += `<div class="card"><div class="row-edit"><img src="${sr.img}" class="cover-big"><div><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; margin-top:10px">
-                    ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">BUCO</span><span class="volumeStatic">${n}</span></div>`).join('')}
-                    ${inL.map(o => `<div class="vol-container"><span class="badge bg-warn">LISTA</span><button class="volumeStatic" onclick="tglOut('${sr.id}', ${o.number})">${o.number} ✕</button></div>`).join('')}
-                    ${(curFumTab === "tutto" && sr.status === "In Corso") ? `<div class="vol-container"><span class="badge bg-blue">NEXT</span><button class="volumeStatic" onclick="tglOut('${sr.id}', ${nxt})">${nxt} +</button></div>` : ''}
-                </div></div></div></div>`;
+        // --- RENDER INIZIALE E MENU ---
+        function render() {
+            if (!db.currentUser) {
+                app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>Seleziona Profilo</h3><div id='uL' style='display:flex; justify-content:center; gap:15px'></div>";
+                db.users.forEach(u => {
+                    const b = document.createElement("button"); b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px";
+                    b.onclick = () => { db.currentUser = u.id; save(); render(); };
+                    document.getElementById('uL').appendChild(b);
+                });
+                return;
             }
-        });
-    }
-    document.getElementById("fList").innerHTML = h || "Nessun elemento.";
-};
-window.tglOut=(sid, n)=>{ 
-    const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n);
-    if(idx > -1) db.outgoing.splice(idx, 1); else db.outgoing.push({seriesId:sid, number:n});
-    save(); rFum(); 
-}
+            const u = db.users.find(u => u.id === db.currentUser);
+            document.documentElement.style.setProperty("--main", u.color);
+            document.getElementById("who").textContent = u.name;
+            document.getElementById("switchUser").style.display = "inline";
+            const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
+            document.getElementById("groupLabel").textContent = `[${g.name}]`;
+            
+            menu.innerHTML = "";
+            [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
+                const b = document.createElement("button"); b.textContent = t;
+                b.onclick = () => { Array.from(menu.children).forEach(x => x.classList.remove('active')); b.classList.add('active'); f(app); };
+                menu.appendChild(b);
+            });
+            searchDB(app);
+        }
+        document.getElementById("switchUser").onclick = () => { db.currentUser = null; save(); render(); };
 
-// --- UTENTI (ASSOCIAZIONE GRUPPO) ---
-function usersTab(c){ 
-    c.innerHTML = `<h2 class="section-title">Gruppi</h2><div class="card"><input id="gn" placeholder="Nuovo Gruppo"><button class="ok" onclick="cG()">Crea</button></div><div id="gL"></div>
-    <h2 class="section-title">Profili</h2><div id="uList"></div><div class="card"><h3>Nuovo Profilo</h3><input id="un" placeholder="Nome"><select id="ug">${db.groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select><input type="color" id="uc" value="#6c5ce7"><button class="ok" onclick="cU()">Aggiungi</button></div>`;
-    db.groups.forEach(g=>{ document.getElementById("gL").innerHTML += `<div class="card" style="display:flex;justify-content:space-between"><b>${g.name}</b></div>`; });
-    db.users.forEach(u=>{ 
-        document.getElementById("uList").innerHTML += `<div class="card"><input id="un-${u.id}" value="${u.name}"><select id="ug-${u.id}">${db.groups.map(g=>`<option value="${g.id}" ${u.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}</select><input type="color" id="uc-${u.id}" value="${u.color}"><button class="ok" onclick="upU('${u.id}')">Salva</button></div>`; 
-    });
-}
-window.cG=()=>{ db.groups.push({id:crypto.randomUUID(), name:document.getElementById("gn").value}); save(); usersTab(app); };
-window.cU=()=>{ db.users.push({id:crypto.randomUUID(), name:document.getElementById("un").value, groupId:document.getElementById("ug").value, color:document.getElementById("uc").value}); save(); usersTab(app); };
-window.upU=(id)=>{ const u=db.users.find(x=>x.id===id); u.name=document.getElementById(`un-${id}`).value; u.groupId=document.getElementById(`ug-${id}`).value; u.color=document.getElementById(`uc-${id}`).value; save(); render(); };
+        // --- FUNZIONI DATABASE ---
+        function searchDB(c) { 
+            c.innerHTML = `<h2 class="section-title">DATABASE</h2><div class="card"><input type="text" id="dbS" placeholder="Cerca Saga, Serie, Autore..." oninput="doS()"></div><div id="sRes"></div>`; 
+            doS(); 
+        }
 
-// --- BACKUP ---
-function backupMenu(c) { c.innerHTML = `<h2 class="section-title">Backup</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div>`; }
-window.exDB = () => { const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); const a = document.createElement('a'); a.href=d; a.download=`backup.json`; a.click(); };
+        window.doS = () => {
+            const q = (document.getElementById("dbS")?.value || "").toLowerCase();
+            const gid = getActiveGroup(); 
+            const mems = db.users.filter(u => u.groupId === gid);
+            let h = "";
+            
+            db.sagas.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name)).forEach(sg => {
+                const srs = db.series.filter(r => r.sagaId === sg.id && (sg.name.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || (r.authors||"").toLowerCase().includes(q)));
+                if (srs.length > 0) {
+                    h += `<div class="card"><h3 style="color:var(--main); border-bottom:1px solid #eee; margin-top:0">${sg.name}</h3>`;
+                    srs.forEach(sr => {
+                        const vs = db.volumes.filter(v => v.seriesId === sr.id).sort((a,b) => a.number - b.number);
+                        h += `<div class="row-edit" style="margin-bottom:15px">
+                                <img src="${sr.img || ''}" class="cover-big" onerror="this.src='https://via.placeholder.com/100x150?text=No+Cover'">
+                                <div style="flex:1">
+                                    ${getBadge(sr.status)}<br>
+                                    <b>${sr.name}</b><br>
+                                    <small>Autore: ${sr.authors || '-'}</small><br>
+                                    <small>Editore: ${sr.publisher || '-'}</small>
+                                    <div style="display:flex; flex-wrap:wrap; margin-top:10px">${vs.map(v => {
+                                        const dots = mems.map(m => db.read.some(r => r.volId === v.id && r.userId === m.id) ? `<span class="dot" style="background:${m.color}"></span>` : '').join('');
+                                        return `<div class="vol-container"><span class="volumeStatic">${v.number}</span><div class="read-indicators">${dots}</div></div>`;
+                                    }).join('')}</div>
+                                </div>
+                              </div>`;
+                    });
+                    h += `</div>`;
+                }
+            });
+            document.getElementById("sRes").innerHTML = h || "Nessun risultato.";
+        };
 
-render();
-</script>
+        function getBadge(s) {
+            if(s === 'In Corso') return '<span class="badge bg-warn">IN CORSO</span>';
+            if(s === 'Terminata') return '<span class="badge bg-success">TERMINATA</span>';
+            if(s === 'Sospesa') return '<span class="badge bg-danger">SOSPESA</span>';
+            return '<span class="badge bg-blue">DA INIZIARE</span>';
+        }
+
+        // --- GESTIONE SERIE ---
+        function addSeries(c) {
+            const gid = getActiveGroup();
+            const sgs = db.sagas.filter(s => s.groupId === gid).sort((a,b) => a.name.localeCompare(b.name));
+            c.innerHTML = `
+                <h2 class="section-title">NUOVA SAGA</h2>
+                <div class="card"><input id="newS" placeholder="Nome Saga (es. Dragon Ball, One Piece...)"><button class="ok" onclick="cSaga()">CREA SAGA</button></div>
+                
+                <h2 class="section-title">NUOVA SERIE</h2>
+                <div class="card">
+                    <input id="nsT" placeholder="Titolo Serie">
+                    <select id="nsS"><option value="">-- Seleziona Saga --</option>${sgs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select>
+                    <input id="nsA" placeholder="Autore">
+                    <input id="nsE" placeholder="Editore">
+                    <input id="nsI" placeholder="URL Immagine Copertina">
+                    <select id="nsSt">
+                        <option value="In Corso">In Corso</option>
+                        <option value="Terminata">Terminata</option>
+                        <option value="Sospesa">Sospesa</option>
+                        <option value="Da Iniziare">Da Iniziare</option>
+                    </select>
+                    <button class="ok" onclick="cSerie()">SALVA SERIE</button>
+                </div>
+                
+                <h2 class="section-title">MODIFICA / ELIMINA</h2>
+                <div class="card">
+                    <select id="selS" onchange="rEdit()"><option value="">-- Scegli Saga da modificare --</option>${sgs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select>
+                    <div id="eArea" style="margin-top:15px"></div>
+                </div>`;
+        }
+
+        window.cSaga = () => { 
+            const n = document.getElementById("newS").value.trim(); 
+            if(n){ db.sagas.push({id:crypto.randomUUID(), name:n, groupId:getActiveGroup()}); save(); addSeries(app); }
+        };
+
+        window.cSerie = () => {
+            const sagaId = document.getElementById("nsS").value;
+            if(!sagaId) { alert("Seleziona una Saga!"); return; }
+            db.series.push({
+                id:crypto.randomUUID(), 
+                name:document.getElementById("nsT").value, 
+                sagaId:sagaId, 
+                groupId:getActiveGroup(), 
+                authors:document.getElementById("nsA").value, 
+                publisher:document.getElementById("nsE").value, 
+                img:document.getElementById("nsI").value, 
+                status:document.getElementById("nsSt").value
+            });
+            save(); addSeries(app);
+        };
+
+        window.rEdit = () => {
+            const sid = document.getElementById("selS").value; if(!sid) return;
+            const sgs = db.sagas.filter(s => s.groupId === getActiveGroup()).sort((a,b) => a.name.localeCompare(b.name));
+            let h = `<div class="card" style="background:#f9f9f9">
+                        <label>Rinomina Saga:</label>
+                        <input id="esN" value="${db.sagas.find(s=>s.id===sid).name}">
+                        <button class="ok" onclick="uSaga('${sid}')">AGGIORNA SAGA</button>
+                     </div>`;
+            db.series.filter(s=>s.sagaId===sid).forEach(sr => {
+                h += `<div class="card">
+                        <div class="row-edit">
+                            <img src="${sr.img}" style="width:60px; border-radius:4px">
+                            <div style="flex:1">
+                                <label style="font-size:10px">Sposta in un'altra Saga:</label>
+                                <select id="mov-${sr.id}">${sgs.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${s.name}</option>`).join('')}</select>
+                                <input id="t-${sr.id}" value="${sr.name}" placeholder="Titolo">
+                                <select id="s-${sr.id}">
+                                    <option value="In Corso" ${sr.status==='In Corso'?'selected':''}>In Corso</option>
+                                    <option value="Terminata" ${sr.status==='Terminata'?'selected':''}>Terminata</option>
+                                    <option value="Sospesa" ${sr.status==='Sospesa'?'selected':''}>Sospesa</option>
+                                    <option value="Da Iniziare" ${sr.status==='Da Iniziare'?'selected':''}>Da Iniziare</option>
+                                </select>
+                                <div style="display:flex; gap:5px; margin-top:5px">
+                                    <button class="ok" style="flex:1" onclick="uSr('${sr.id}')">SALVA</button>
+                                    <button class="danger" onclick="dSr('${sr.id}')">ELIMINA</button>
+                                </div>
+                            </div>
+                        </div>
+                      </div>`;
+            });
+            document.getElementById("eArea").innerHTML = h;
+        };
+
+        window.uSaga = (id) => { db.sagas.find(x=>x.id===id).name = document.getElementById("esN").value; save(); addSeries(app); };
+        window.uSr = (id) => { 
+            const s = db.series.find(x=>x.id===id); 
+            s.name = document.getElementById(`t-${id}`).value; 
+            s.status = document.getElementById(`s-${id}`).value; 
+            s.sagaId = document.getElementById(`mov-${id}`).value; 
+            save(); rEdit(); 
+        };
+        window.dSr = (id) => { if(confirm("Eliminare definitivamente la serie e tutti i suoi dati?")){ db.series=db.series.filter(x=>x.id!==id); db.volumes=db.volumes.filter(v=>v.seriesId!==id); save(); rEdit(); }};
+
+        // --- GESTIONE NUMERI (BLINDATA CONTRO I DOPPI) ---
+        function addVolumes(c) { 
+            c.innerHTML = `<h2 class="section-title">AGGIUNGI NUMERI</h2><div class="card"><input type="text" id="vS" placeholder="Cerca serie per aggiungere volumi..." oninput="rAV()"></div><div id="vAL"></div>`; 
+        }
+
+        window.rAV = () => {
+            const q = (document.getElementById("vS").value).toLowerCase(); 
+            if(q.length < 2) { document.getElementById("vAL").innerHTML = ""; return; }
+            
+            document.getElementById("vAL").innerHTML = db.series.filter(s => s.groupId === getActiveGroup() && s.name.toLowerCase().includes(q)).map(sr => {
+                const vs = db.volumes.filter(v => v.seriesId === sr.id).sort((a,b) => a.number - b.number);
+                return `<div class="card">
+                    <div class="row-edit">
+                        <img src="${sr.img}" class="cover-big">
+                        <div style="flex:1">
+                            <b>${sr.name}</b>
+                            <div style="display:flex; gap:5px; margin-top:10px">
+                                <input type="number" id="st-${sr.id}" placeholder="Da" style="width:70px">
+                                <input type="number" id="en-${sr.id}" placeholder="A" style="width:70px">
+                                <button class="ok" onclick="bAdd('${sr.id}')">AGGIUNGI</button>
+                            </div>
+                            <p style="font-size:11px; color:#666; margin-top:5px">Clicca un numero sotto per eliminarlo</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; margin-top:10px; gap:4px">
+                        ${vs.map(v => `<button class="volumeBtn" style="width:auto; min-width:40px" onclick="remV('${v.id}')">${v.number}</button>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        window.bAdd = (sid) => {
+            const stInput = document.getElementById(`st-${sid}`).value;
+            const enInput = document.getElementById(`en-${sid}`).value;
+            const st = Number(stInput);
+            const en = enInput ? Number(enInput) : st;
+
+            if(!stInput) { alert("Inserisci almeno il numero iniziale"); return; }
+            
+            let duplicati = [];
+            let aggiunti = 0;
+
+            for(let i = st; i <= en; i++) {
+                const esiste = db.volumes.find(v => v.seriesId === sid && v.number === i);
+                if(esiste) {
+                    duplicati.push(i);
+                } else {
+                    db.volumes.push({
+                        id: crypto.randomUUID(), 
+                        seriesId: sid, 
+                        number: i, 
+                        groupId: getActiveGroup()
+                    });
+                    aggiunti++;
+                }
+            }
+
+            if(duplicati.length > 0) {
+                alert("ATTENZIONE: I seguenti numeri erano già presenti e non sono stati duplicati: " + duplicati.join(", "));
+            }
+            
+            if(aggiunti > 0) {
+                save();
+                rAV();
+            }
+        };
+
+        window.remV = (id) => { 
+            if(confirm("Vuoi eliminare questo numero dal database?")){ 
+                db.volumes = db.volumes.filter(v => v.id !== id); 
+                db.read = db.read.filter(r => r.volId !== id); // Pulisce anche lo storico lettura
+                save(); 
+                rAV(); 
+            }
+        };
+
+        // --- SEZIONE LETTO (SEGNA LETTURA) ---
+        function readTab(c) { 
+            c.innerHTML = `<h2 class="section-title">SEGNA LETTO</h2><div class="card"><input type="text" id="rS" placeholder="Cerca serie..." oninput="rRL()"></div><div id="rArea"></div>`; 
+        }
+
+        window.rRL = () => {
+            const q = (document.getElementById("rS").value).toLowerCase(); 
+            if(q.length < 2) { document.getElementById("rArea").innerHTML = ""; return; }
+            
+            const uid = db.currentUser;
+            const u = db.users.find(x => x.id === uid);
+
+            document.getElementById("rArea").innerHTML = db.series.filter(s => s.groupId === getActiveGroup() && s.name.toLowerCase().includes(q)).map(sr => {
+                const vs = db.volumes.filter(v => v.seriesId === sr.id).sort((a,b) => a.number - b.number);
+                return `<div class="card">
+                    <div class="row-edit">
+                        <img src="${sr.img}" class="cover-big">
+                        <div style="flex:1">
+                            <b>${sr.name}</b>
+                            <div style="display:flex; flex-wrap:wrap; margin-top:10px; gap:4px">
+                                ${vs.map(v => {
+                                    const isLetto = db.read.some(rd => rd.volId === v.id && rd.userId === uid);
+                                    return `<button class="volumeBtn" 
+                                        style="width:45px; ${isLetto ? `background:${u.color}; color:white; border:none;` : ''}" 
+                                        onclick="tglR('${v.id}')">${v.number}</button>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        window.tglR = (vid) => { 
+            const uid = db.currentUser;
+            const idx = db.read.findIndex(r => r.volId === vid && r.userId === uid);
+            if(idx > -1) {
+                db.read.splice(idx, 1); 
+            } else {
+                db.read.push({ volId: vid, userId: uid });
+            }
+            save(); 
+            rRL(); 
+        };
+
+        // --- CONSIGLI (ORDINATI PER %) ---
+        function adviceTab(c) {
+            c.innerHTML = `<h2 class="section-title">CONSIGLI</h2>
+                <div class="card">
+                    <select id="adF" onchange="rAd()">
+                        <option value="CONT">Continua a leggere</option>
+                        <option value="OTH">Gli altri sono più avanti di te</option>
+                        <option value="NEW_OTH">Non hai iniziato, ma altri sì</option>
+                        <option value="NONE">Nessuno ha iniziato</option>
+                    </select>
+                </div>
+                <div id="adRes"></div>`;
+            rAd();
+        }
+
+        window.rAd = () => {
+            const gid = getActiveGroup(), uid = db.currentUser, f = document.getElementById("adF").value;
+            const otherUsers = db.users.filter(u => u.id !== uid && u.groupId === gid);
+            let list = [];
+            
+            db.series.filter(s => s.groupId === gid).forEach(s => {
+                const vids = db.volumes.filter(v => v.seriesId === s.id).map(v => v.id);
+                if (vids.length === 0) return;
+                
+                const myRead = db.read.filter(r => r.userId === uid && vids.includes(r.volId)).length;
+                const p = Math.round((myRead / vids.length) * 100);
+                let show = false;
+
+                if (f === "CONT" && myRead > 0 && myRead < vids.length) show = true;
+                if (f === "OTH" || f === "NEW_OTH") {
+                    const maxOth = Math.max(...otherUsers.map(u => db.read.filter(rd => rd.userId === u.id && vids.includes(rd.volId)).length), 0);
+                    if (f === "OTH" && myRead > 0 && maxOth > myRead) show = true;
+                    if (f === "NEW_OTH" && myRead === 0 && maxOth > 0) show = true;
+                }
+                if (f === "NONE" && myRead === 0 && !db.read.some(rd => vids.includes(rd.volId))) show = true;
+                
+                if (show) list.push({ ...s, perc: p });
+            });
+
+            list.sort((a, b) => b.perc - a.perc);
+            document.getElementById("adRes").innerHTML = `<div class="advice-grid">${list.map(s => `
+                <div class="advice-card">
+                    <img src="${s.img}">
+                    <b>${s.name}</b><br>
+                    <span class="badge bg-success">${s.perc}% completato</span>
+                </div>`).join('')}</div>`;
+        };
+
+        // --- STATISTICHE (BARRE E DRILLDOWN) ---
+        function statsTab(c) {
+            const gid = getActiveGroup();
+            const gSagas = db.sagas.filter(s => s.groupId === gid);
+            const gSeries = db.series.filter(s => s.groupId === gid);
+            const gVols = db.volumes.filter(v => v.groupId === gid);
+            
+            let h = `<h2 class="section-title">GENERALI</h2>
+                     <div class="card">Saghe: <b>${gSagas.length}</b> | Serie: <b>${gSeries.length}</b> | Volumi: <b>${gVols.length}</b></div>
+                     <h2 class="section-title">PERSONALI</h2>`;
+
+            db.users.filter(u => u.groupId === gid).forEach(u => {
+                const vRead = db.read.filter(r => r.userId === u.id && gVols.some(v => v.id === r.volId)).length;
+                const sCompl = gSeries.filter(sr => {
+                    const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
+                    return vids.length > 0 && vids.every(id => db.read.some(r => r.userId === u.id && r.volId === id));
+                }).length;
+
+                const keys = ["0%", "1-25%", "25-50%", "50-75%", "75-99%", "100%"];
+                const serieD = {}; keys.forEach(k => serieD[k] = []);
+                
+                gSeries.forEach(sr => {
+                    const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
+                    const p = vids.length ? (db.read.filter(r => r.userId === u.id && vids.includes(r.volId)).length / vids.length) * 100 : 0;
+                    let k = "0%"; if (p >= 100) k = "100%"; else if (p >= 75) k = "75-99%"; else if (p >= 50) k = "50-75%"; else if (p >= 25) k = "25-50%"; else if (p > 0) k = "1-25%";
+                    serieD[k].push(sr);
+                });
+
+                const uidClean = u.id.replace(/\W/g, '');
+                statsData.series[uidClean] = serieD;
+
+                h += `<div class="card" style="border-left:5px solid ${u.color}">
+                    <h3>${u.name}</h3>
+                    <p>Serie Completate: ${sCompl}/${gSeries.length}</p>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${(sCompl / (gSeries.length || 1)) * 100}%; background:${u.color}"></div></div>
+                    <p>Volumi Letti: ${vRead}/${gVols.length}</p>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${(vRead / (gVols.length || 1)) * 100}%; background:${u.color}"></div></div>
+                    <div class="pill-row" style="display:flex; gap:4px; margin-top:10px">
+                        ${keys.map(k => `<button class="pill" style="flex:1; font-size:9px; padding:5px" onclick="openDD('${uidClean}','${k}','${u.name}')">${k}<br>${serieD[k].length}</button>`).join('')}
+                    </div>
+                </div>`;
+            });
+            c.innerHTML = h;
+        }
+
+        window.openDD = (uid, k, name) => {
+            const list = statsData.series[uid][k];
+            document.getElementById("ddTitle").textContent = `${name}: Serie al ${k}`;
+            document.getElementById("ddContent").innerHTML = list.length ? list.map(i => `<div style="padding:10px; border-bottom:1px solid #eee"><b>${i.name}</b></div>`).join('') : "Nessuna serie in questa fascia.";
+            document.getElementById("ddOverlay").style.display = "block"; document.getElementById("ddBox").style.display = "block";
+        };
+        window.closeDD = () => { document.getElementById("ddOverlay").style.display = "none"; document.getElementById("ddBox").style.display = "none"; };
+
+        // --- FUMETTERIA (4 SCHEDE + LOGICA NEXT/BUCHI) ---
+        function fumetteriaTab(c) {
+            c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2>
+                <div class="tabs-fume">
+                    ${["tutto", "da prendere", "mancanti", "da iniziare"].map(t => `<button class="tab-f-btn ${curFumTab === t ? 'active' : ''}" onclick="setFumTab('${t}')">${t.toUpperCase()}</button>`).join('')}
+                </div><div id="fList"></div>`;
+            rFum();
+        }
+
+        window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
+
+        window.rFum = () => {
+            const gid = getActiveGroup(); let h = "";
+            if (curFumTab === "da iniziare") {
+                h = `<div class="card"><h3>Pianifica Nuove Serie</h3>
+                     <input id="wiT" placeholder="Titolo Nuova Serie"><input id="wiV" type="number" placeholder="Volumi totali previsti"><button class="ok" onclick="addWi()">AGGIUNGI AI DESIDERI</button></div>`;
+                db.wishlist.filter(w => w.groupId === gid).forEach(w => {
+                    h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center">
+                            <span><b>${w.title}</b> (${w.vols} volumi)</span>
+                            <button class="danger" onclick="delWi('${w.id}')">X</button>
+                          </div>`;
+                });
+            } else {
+                db.series.filter(s => s.groupId === gid).sort((a, b) => a.name.localeCompare(b.name)).forEach(sr => {
+                    const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number);
+                    const max = vs.length ? Math.max(...vs) : 0;
+                    let gaps = []; for (let i = 1; i < max; i++) if (!vs.includes(i)) gaps.push(i);
+                    let inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number);
+                    
+                    let show = false;
+                    if (curFumTab === "tutto" && (sr.status === "In Corso" || gaps.length > 0 || inL.length > 0)) show = true;
+                    if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
+                    if (curFumTab === "mancanti" && gaps.length > 0) show = true;
+
+                    if (show) {
+                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px">
+                            <div style="flex:1"><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
+                                ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">BUCO</span><span class="volumeStatic">${n}</span></div>`).join('')}
+                                ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">LISTA</span><button class="volumeStatic" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
+                                ${(sr.status === 'In Corso' && !inL.includes(max + 1)) ? `<button class="ok" style="padding:5px 10px; font-size:10px" onclick="tglOut('${sr.id}', ${max + 1})">${max + 1} +</button>` : ''}
+                            </div></div></div></div>`;
+                    }
+                });
+            }
+            document.getElementById("fList").innerHTML = h || "Nessun volume da segnalare in questa categoria.";
+        };
+
+        window.addWi = () => { db.wishlist.push({ id: crypto.randomUUID(), title: document.getElementById("wiT").value, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); };
+        window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
+        window.tglOut = (sid, n) => {
+            const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n);
+            if (idx > -1) db.outgoing.splice(idx, 1); else db.outgoing.push({ seriesId: sid, number: n });
+            save(); rFum();
+        };
+
+        // --- GESTIONE UTENTI E GRUPPI (CON TASTI ELIMINA) ---
+        function usersTab(c) {
+            c.innerHTML = `
+                <h2 class="section-title">GESTIONE GRUPPI</h2>
+                <div class="card">
+                    <input id="gn" placeholder="Nome Nuovo Gruppo">
+                    <button class="ok" onclick="cG()">CREA GRUPPO</button>
+                </div>
+                <div id="gL"></div>
+                
+                <h2 class="section-title">GESTIONE PROFILI</h2>
+                <div id="uList"></div>
+                <div class="card">
+                    <h3>Nuovo Profilo</h3>
+                    <input id="un" placeholder="Nome Profilo">
+                    <select id="ug">${db.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}</select>
+                    <div style="display:flex; align-items:center; gap:10px; margin:5px 0">
+                        <label>Colore:</label><input type="color" id="uc" value="#6c5ce7" style="width:50px; padding:2px">
+                    </div>
+                    <button class="ok" onclick="cU()">AGGIUNGI PROFILO</button>
+                </div>`;
+
+            const gL = document.getElementById("gL");
+            db.groups.forEach(g => {
+                const card = document.createElement("div");
+                card.className = "card";
+                card.style = "display:flex; justify-content:space-between; align-items:center";
+                card.innerHTML = `<b>${g.name}</b> ${g.id !== 'default' ? `<button class="danger" onclick="dG('${g.id}')">ELIMINA</button>` : ''}`;
+                gL.appendChild(card);
+            });
+
+            const uList = document.getElementById("uList");
+            db.users.forEach(u => {
+                uList.innerHTML += `
+                    <div class="card">
+                        <input id="un-${u.id}" value="${u.name}">
+                        <select id="ug-${u.id}">${db.groups.map(g => `<option value="${g.id}" ${u.groupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}</select>
+                        <div style="display:flex; align-items:center; gap:10px; margin:5px 0">
+                            <label>Colore:</label><input type="color" id="uc-${u.id}" value="${u.color}" style="width:50px; padding:2px">
+                        </div>
+                        <div style="display:flex; gap:5px; margin-top:5px">
+                            <button class="ok" style="flex:1" onclick="upU('${u.id}')">SALVA</button>
+                            <button class="danger" onclick="dU('${u.id}')">ELIMINA</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        window.cG = () => { const n = document.getElementById("gn").value.trim(); if(n){ db.groups.push({id:crypto.randomUUID(), name:n}); save(); usersTab(app); }};
+        window.cU = () => { const n = document.getElementById("un").value.trim(); if(n){ db.users.push({id:crypto.randomUUID(), name:n, groupId:document.getElementById("ug").value, color:document.getElementById("uc").value}); save(); usersTab(app); }};
+        window.upU = (id) => { 
+            const u = db.users.find(x => x.id === id); 
+            u.name = document.getElementById(`un-${id}`).value; 
+            u.groupId = document.getElementById(`ug-${id}`).value; 
+            u.color = document.getElementById(`uc-${id}`).value; 
+            save(); 
+            render(); 
+        };
+        window.dG = (id) => { if(confirm("Eliminare il gruppo? Gli utenti associati rimarranno ma senza gruppo.")){ db.groups = db.groups.filter(x => x.id !== id); save(); usersTab(app); }};
+        window.dU = (id) => { 
+            if(db.users.length <= 1) { alert("Deve esserci almeno un utente!"); return; }
+            if(confirm("Eliminare definitivamente questo profilo e le sue letture?")){ 
+                db.users = db.users.filter(x => x.id !== id); 
+                db.read = db.read.filter(r => r.userId !== id);
+                if(db.currentUser === id) db.currentUser = null;
+                save(); 
+                render(); 
+            }
+        };
+
+        // --- BACKUP ---
+        function backupMenu(c) { 
+            c.innerHTML = `
+                <h2 class="section-title">BACKUP E RIPRISTINO</h2>
+                <div class="card">
+                    <p>Esporta i tuoi dati per sicurezza o per caricarli su un altro dispositivo.</p>
+                    <button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON (BACKUP)</button>
+                </div>
+                <div class="card">
+                    <p>Importa un file precedentemente salvato (Attenzione: sovrascrive i dati attuali!).</p>
+                    <input type="file" id="importFile" onchange="impDB(this)" style="display:none">
+                    <button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button>
+                </div>`; 
+        }
+
+        window.exDB = () => { 
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); 
+            const a = document.createElement('a'); a.href = dataStr; a.download = `manganest_backup_2026.json`; a.click(); 
+        };
+        window.impDB = (i) => { 
+            const reader = new FileReader(); 
+            reader.onload = (e) => { 
+                try {
+                    db = JSON.parse(e.target.result); 
+                    save(); 
+                    location.reload();
+                } catch(err) { alert("Errore nel file di backup!"); }
+            }; 
+            reader.readAsText(i.files[0]); 
+        };
+
+        // AVVIO APP
+        render();
+    </script>
 </body>
 </html>
