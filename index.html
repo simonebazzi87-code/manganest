@@ -495,8 +495,7 @@
         window.closeDD = () => { document.getElementById("ddOverlay").style.display = "none"; document.getElementById("ddBox").style.display = "none"; };
 
 
-
-// --- SEZIONE FUMETTERIA AGGIORNATA ---
+// --- SEZIONE FUMETTERIA DEFINITIVA ---
         function fumetteriaTab(c) {
             c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2>
                 <div class="tabs-fume">
@@ -507,36 +506,26 @@
 
         window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
 
-
-window.rFum = () => {
+        window.rFum = () => {
             const gid = getActiveGroup(); let h = "";
-            
             if (curFumTab === "da iniziare") {
-                // MOSTRA SOLO SERIE CON STATO "DA INIZIARE"
                 const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
-                h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue); color:#0d47a1">
-                        <b>SERIE DA INIZIARE:</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie con stato "Da Iniziare".'}
-                     </div>
-                     <div class="card"><h3>Wishlist (Appunti)</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
+                h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE:</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna.'}</div>
+                     <div class="card"><h3>Wishlist</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
                 db.wishlist.filter(w => w.groupId === gid).forEach(w => { h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; });
             } else {
-                // MOSTRA SOLO SERIE "IN CORSO" O "FINITE" (ESCLUDE LE "DA INIZIARE")
                 db.series.filter(s => s.groupId === gid && s.status !== "Da Iniziare").sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
                     const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
-                    let gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
-                    let inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
+                    const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
+                    const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
                     
-                    // Logica NEXT: propone il numero successivo a quello che hai o che hai già in lista
+                    // Logica tasto +: guarda il massimo tra quello che hai e quello già in lista
                     const maxL = inL.length ? Math.max(...inL) : 0;
                     const nextN = Math.max(maxP, maxL) + 1;
 
-                    // Filtri delle tab
-                    let show = (curFumTab === "tutto") || 
-                               (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || 
-                               (curFumTab === "mancanti" && gaps.length > 0);
-                    
+                    let show = (curFumTab === "tutto") || (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || (curFumTab === "mancanti" && gaps.length > 0);
                     if (show) { 
-                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px"><div style="flex:1"><b>${sr.name}</b>
+                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px; height:60px; object-fit:cover"><div style="flex:1"><b>${sr.name}</b>
                         <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
                             ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
                             ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
@@ -545,48 +534,29 @@ window.rFum = () => {
                     }
                 });
             }
-            document.getElementById("fList").innerHTML = h || "Nessuna serie trovata.";
+            document.getElementById("fList").innerHTML = h || "Nessuna serie.";
         };
-
-
-
-
-
-
-
-
-
-        
 
         window.addWi = () => { const t = document.getElementById("wiT").value; if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }};
         window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
         window.tglOut = (sid, n) => { const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n); if (idx > -1) db.outgoing.splice(idx, 1); else db.outgoing.push({ seriesId: sid, number: n }); save(); rFum(); };
 
-    // --- GESTIONE UTENTI E GRUPPI ---
         function usersTab(c) {
-            c.innerHTML = `<h2 class="section-title">GRUPPI</h2><div class="card"><input id="gn" placeholder="Nome Gruppo"><button class="ok" onclick="cG()">CREA</button></div><div id="gL"></div><h2 class="section-title">PROFILI</h2><div id="uList"></div><div class="card"><h3>Nuovo</h3><input id="un" placeholder="Nome"><select id="ug">${db.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}</select><input type="color" id="uc" value="#6c5ce7"><button class="ok" onclick="cU()">AGGIUNGI</button></div>`;
+            c.innerHTML = `<h2 class="section-title">GRUPPI</h2><div id="gL"></div><div class="card"><input id="gn" placeholder="Nuovo Gruppo"><button class="ok" onclick="cG()">CREA</button></div><h2 class="section-title">PROFILI</h2><div id="uList"></div><div class="card"><h3>Nuovo Profilo</h3><input id="un" placeholder="Nome"><select id="ug">${db.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}</select><input type="color" id="uc" value="#6c5ce7"><button class="ok" onclick="cU()">AGGIUNGI</button></div>`;
             db.groups.forEach(g => { document.getElementById("gL").innerHTML += `<div class="card" style="display:flex; justify-content:space-between"><b>${g.name}</b> ${g.id!=='default'?`<button class="danger" onclick="dG('${g.id}')">X</button>`:''}</div>`; });
             db.users.forEach(u => { document.getElementById("uList").innerHTML += `<div class="card"><input id="un-${u.id}" value="${u.name}"><select id="ug-${u.id}">${db.groups.map(g => `<option value="${g.id}" ${u.groupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}</select><input type="color" id="uc-${u.id}" value="${u.color}"><div style="display:flex; gap:5px; margin-top:5px"><button class="ok" style="flex:1" onclick="upU('${u.id}')">SALVA</button><button class="danger" onclick="dU('${u.id}')">X</button></div></div>`; });
         }
         window.cG = () => { const n = document.getElementById("gn").value.trim(); if(n){ db.groups.push({id:crypto.randomUUID(), name:n}); save(); usersTab(app); }};
         window.cU = () => { const n = document.getElementById("un").value.trim(); if(n){ db.users.push({id:crypto.randomUUID(), name:n, groupId:document.getElementById("ug").value, color:document.getElementById("uc").value}); save(); usersTab(app); }};
         window.upU = (id) => { const u = db.users.find(x => x.id === id); u.name = document.getElementById(`un-${id}`).value; u.groupId = document.getElementById(`ug-${id}`).value; u.color = document.getElementById(`uc-${id}`).value; save(); render(); };
-        window.dG = (id) => { if(confirm("X?")){ db.groups = db.groups.filter(x => x.id !== id); save(); usersTab(app); }};
-        window.dU = (id) => { if(db.users.length > 1 && confirm("X?")){ db.users = db.users.filter(x => x.id !== id); if(db.currentUser === id) db.currentUser = null; save(); render(); }};
+        window.dG = (id) => { if(confirm("Eliminare gruppo?")){ db.groups = db.groups.filter(x => x.id !== id); save(); usersTab(app); }};
+        window.dU = (id) => { if(db.users.length > 1 && confirm("Eliminare utente?")){ db.users = db.users.filter(x => x.id !== id); if(db.currentUser === id) db.currentUser = null; save(); render(); }};
 
-
-    // --- BACKUP E AVVIO ---
         function backupMenu(c) { c.innerHTML = `<h2 class="section-title">BACKUP</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div><div class="card"><input type="file" id="importFile" onchange="impDB(this)" style="display:none"><button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button></div>`; }
         window.exDB = () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = `manganest_backup.json`; a.click(); };
-        window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("X"); }}; r.readAsText(i.files[0]); };
+        window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
 
-        render();    
-
-
-
-
-        
+        render();
     </script>
 </body>
 </html>
-        
