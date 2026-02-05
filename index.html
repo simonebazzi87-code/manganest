@@ -494,59 +494,6 @@
         };
         window.closeDD = () => { document.getElementById("ddOverlay").style.display = "none"; document.getElementById("ddBox").style.display = "none"; };
 
-        // --- FUMETTERIA (REVISIONATA) ---
-        function fumetteriaTab(c) {
-            c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2>
-                <div class="tabs-fume">
-                    ${["tutto", "da prendere", "mancanti", "da iniziare"].map(t => `<button class="tab-f-btn ${curFumTab === t ? 'active' : ''}" onclick="setFumTab('${t}')">${t.toUpperCase()}</button>`).join('')}
-                </div><div id="fList"></div>`;
-            rFum();
-        }
-
-        window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
-
-        window.rFum = () => {
-            const gid = getActiveGroup(); let h = "";
-            if (curFumTab === "da iniziare") {
-                const noPoss = db.series.filter(s => s.groupId === gid && db.volumes.filter(v => v.seriesId === s.id).length === 0);
-                h = `<div class="card" style="background:#f0f0f0"><b>Serie nel database con 0 volumi posseduti:</b><br>${noPoss.length ? noPoss.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna.'}</div>`;
-                h += `<div class="card"><h3>Pianifica Nuove Serie (Wishlist)</h3>
-                     <input id="wiT" placeholder="Titolo Nuova Serie"><input id="wiV" type="number" placeholder="Volumi totali"><button class="ok" onclick="addWi()">AGGIUNGI AI DESIDERI</button></div>`;
-                db.wishlist.filter(w => w.groupId === gid).forEach(w => {
-                    h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`;
-                });
-            } else {
-                db.series.filter(s => s.groupId === gid).sort((a, b) => a.name.localeCompare(b.name)).forEach(sr => {
-                    const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number);
-                    const max = vs.length ? Math.max(...vs) : 0;
-                    let gaps = []; for (let i = 1; i < max; i++) if (!vs.includes(i)) gaps.push(i);
-                    let inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number);
-                    
-                    let show = false;
-                    if (curFumTab === "tutto" && (sr.status === "In Corso" || gaps.length > 0 || inL.length > 0)) show = true;
-                    if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
-                    if (curFumTab === "mancanti" && gaps.length > 0) show = true;
-
-                    if (show) {
-                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px">
-                            <div style="flex:1"><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
-                                ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
-                                ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
-                                ${(sr.status === 'In Corso' && !inL.includes(max + 1)) ? `<div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${max + 1})">${max + 1} +</button></div>` : ''}
-                            </div></div></div></div>`;
-                    }
-                });
-            }
-            document.getElementById("fList").innerHTML = h || "Nessun volume trovato.";
-        };
-
-        window.addWi = () => { db.wishlist.push({ id: crypto.randomUUID(), title: document.getElementById("wiT").value, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); };
-        window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
-        window.tglOut = (sid, n) => {
-            const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n);
-            if (idx > -1) db.outgoing.splice(idx, 1); else db.outgoing.push({ seriesId: sid, number: n });
-            save(); rFum();
-        };
 
 
 // --- FUMETTERIA AGGIORNATA (LOGICA NEXT INFINITA + SCHEDA DA INIZIARE) ---
@@ -622,33 +569,6 @@
             save(); 
             rFum(); // Ricarica subito per mostrare il nuovo tasto +
         };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         
