@@ -66,49 +66,40 @@
 
         function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
-
 function render() {
     // Schermata iniziale: mostrata sempre al refresh (F5)
     if (!sessionStarted) {
         app.innerHTML = `
             <div style="text-align:center; padding:50px 20px;">
                 <h1 style="color:var(--main); font-size:2.5rem; margin-bottom:10px;">MangaNest</h1>
-                <p style="color:#666; margin-bottom:30px;">Bentornato Simone!<br>Come vuoi procedere?</p>
-                
+                <p style="color:#666; margin-bottom:30px;">Bentornato Simone!<br>Cosa vuoi fare?</p>
                 <button class="ok" style="width:100%; margin-bottom:15px; padding:20px; font-size:16px" onclick="document.getElementById('importFileInit').click()">
                     📂 CARICA BACKUP (JSON)
                 </button>
                 <input type="file" id="importFileInit" onchange="impDB(this)" style="display:none">
-                
                 <button class="ok" style="width:100%; background:var(--dark); padding:20px; font-size:16px" onclick="sessionStarted=true; render();">
                     🚀 PROSEGUI CON DATI LOCALI
                 </button>
-                
-                <p style="margin-top:30px; font-size:12px; color:#999;">Usa "Prosegui" se i dati nel browser sono già aggiornati.</p>
             </div>`;
         return;
     }
 
-    // Se il database è vuoto dopo il caricamento, inizializza Simone
     if (!db || !db.users || db.users.length === 0) { 
         db = { users: [{id: "u1", name: "Simone", color: "#6c5ce7", groupId: "default"}], groups: [{id: "default", name: "Principale"}], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
         save();
     }
 
-    // Se nessun utente selezionato, mostra scelta profilo
     if (!db.currentUser) { selectUser(); return; }
 
     const u = db.users.find(x => x.id === db.currentUser);
     if(!u) { db.currentUser = null; selectUser(); return; }
     
-    // Configura Tema e Header
     document.documentElement.style.setProperty("--main", u.color);
     document.getElementById("who").textContent = u.name;
     document.getElementById("switchUser").style.display = "inline";
     const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
     document.getElementById("groupLabel").textContent = `[${g.name}]`;
     
-    // Genera Menu
     menu.innerHTML = "";
     [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
         const b = document.createElement("button"); 
@@ -123,11 +114,11 @@ function render() {
         menu.appendChild(b);
     });
 
-    // Avvia la tab attiva
     if(curTab === "FUMETTERIA") fumetteriaTab(app);
     else if(curTab === "SERIE") addSeries(app);
     else searchDB(app);
 }
+
 
     // Se non ci sono utenti dopo il caricamento, inizializza default
     if (!db || !db.users || db.users.length === 0) { 
