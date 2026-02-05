@@ -517,7 +517,7 @@ window.rFum = () => {
     // 1. GESTIONE TAB "DA INIZIARE"
     if (curFumTab === "da iniziare") {
         // Cerchiamo le serie che hanno la parola "iniziare" nello stato (non importa maiuscole o minuscole)
-        const sDaI = db.series.filter(s => s.groupId === gid && s.status.toLowerCase().includes("iniziare"));
+        const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
         
         h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
                 <b>SERIE DA INIZIARE:</b><br>
