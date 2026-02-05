@@ -665,7 +665,22 @@ window.rFum = () => {
 
         function backupMenu(c) { c.innerHTML = `<h2 class="section-title">BACKUP</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div><div class="card"><input type="file" id="importFile" onchange="impDB(this)" style="display:none"><button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button></div>`; }
         window.exDB = () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = `manganest_backup.json`; a.click(); };
-        window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
+        window.impDB = (input) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.users && imported.series) {
+                        db = imported;
+                        save();
+                        sessionStarted = true; // Salta la schermata iniziale
+                        render();              // Ricarica l'interfaccia
+                        alert("Backup caricato con successo!");
+                    }
+                } catch (err) { alert("Errore nel caricamento del file."); }
+            };
+            reader.readAsText(input.files[0]);
+        };;
 
         render();
     </script>
