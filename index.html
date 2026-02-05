@@ -5,7 +5,7 @@
 <title>MangaNest Ultimate Pro - Simone & Andrea</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root{--main:#6c5ce7; --warn:#f1c40f; --danger:#e74c3c; --success:#27ae60; --bg:#f5f6fa; --dark:#2d3436}
+:root{--main:#6c5ce7; --warn:#f1c40f; --danger:#e74c3c; --success:#27ae60; --blue:#3498db; --bg:#f5f6fa; --dark:#2d3436}
 body{margin:0;font-family:system-ui;background:var(--bg); color:var(--dark)}
 header{background:var(--main);color:#fff;padding:10px;display:flex;justify-content:space-between;align-items:center}
 nav{display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:100}
@@ -27,7 +27,9 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 .stat-box h2 { margin: 5px 0; font-size: 22px; color: var(--main); }
 .stat-box span { font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase; }
 
-/* Stile Dettaglio Fasce */
+.progress-container { background:#eee; height:8px; border-radius:4px; margin:5px 0 15px 0; overflow:hidden }
+.progress-bar { height:100%; transition: width 0.3s ease; }
+
 .pill-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; background: #f1f2f6; border: 1px solid #ddd; }
 
@@ -42,7 +44,7 @@ input,select{padding:10px;margin:5px 0;width:100%;border:1px solid #ccc;border-r
 .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; display: inline-block; margin-bottom: 5px; }
 .bg-warn { background: var(--warn); color: #333; }
 .bg-danger { background: var(--danger); }
-.bg-blue { background: #3498db; }
+.bg-blue { background: var(--blue); }
 .bg-success { background: var(--success); }
 .bg-gray { background: #95a5a6; }
 
@@ -106,7 +108,7 @@ function render(){
   switchBtn.style.display = "inline";
   menu.innerHTML = "";
   
-  [["Database",searchDB], ["Serie",addSeries], ["Numeri",addVolumes], ["Letto",readTab], ["Consigli",adviceTab], ["Stats",statsTab], ["Fumetteria",fumetteriaTab], ["Utenti",usersTab], ["Backup",backupMenu]].forEach(([t,f])=>{
+  [["Database",searchDB], ["Serie",addSeries], ["Numeri",addVolumes], ["Letto",readTab], ["Consigli",adviceTab], ["Statistiche",statsTab], ["Fumetteria",fumetteriaTab], ["Utenti",usersTab], ["Backup",backupMenu]].forEach(([t,f])=>{
     const b = document.createElement("button"); b.textContent = t; b.onclick = () => f(app); menu.appendChild(b);
   });
   searchDB(app);
@@ -126,7 +128,7 @@ const getBadge = (status) => {
     return '<span class="badge bg-blue">NON POSSEDUTA</span>';
 };
 
-/* ================= 1. DATABASE ================= */
+/* ================= DATABASE ================= */
 function searchDB(c){
   c.innerHTML=`<h2 class="section-title">Catalogo</h2><div class="card"><input type="text" id="dbSearch" placeholder="Cerca Saga o Serie..." oninput="doSearch()"></div><div id="searchRes"></div>`;
   doSearch();
@@ -154,7 +156,7 @@ window.doSearch=()=>{
   document.getElementById("searchRes").innerHTML = h || `<div class="card">Nessun risultato.</div>`;
 }
 
-/* ================= STATISTICHE (SIMONE) ================= */
+/* ================= STATISTICHE ================= */
 function statsTab(c){
     const gid = getActiveGroup();
     const groupSeries = db.series.filter(s => s.groupId === gid && s.status !== 'Non Posseduta');
@@ -175,7 +177,7 @@ function statsTab(c){
         <div class="stat-box"><span>📑 Volumi</span><h2>${groupVols.length}</h2></div>
         <div class="stat-box"><span>✅ Terminate</span><h2>${groupSeries.filter(s=>s.status==='Terminata').length}</h2></div>
     </div>
-    <div class="card"><h4>Serie per Casa Editrice (Ordinate per volume)</h4><div style="font-size:12px; display:flex; flex-wrap:wrap; gap:8px">${sortedPubs.map(([k,v])=>`<span style="background:#f1f2f6; padding:4px 8px; border-radius:4px; border-left:3px solid var(--main)"><b>${k}:</b> ${v}</span>`).join('')}</div></div>
+    <div class="card"><h4>Serie per Casa Editrice</h4><div style="font-size:12px; display:flex; flex-wrap:wrap; gap:8px">${sortedPubs.map(([k,v])=>`<span style="background:#f1f2f6; padding:4px 8px; border-radius:4px; border-left:3px solid var(--main)"><b>${k}:</b> ${v}</span>`).join('')}</div></div>
     <h2 class="section-title">Progressi Lettura Personali</h2><div id="userStats"></div>`;
 
     const members = db.users.filter(u => u.groupId === gid);
@@ -184,19 +186,19 @@ function statsTab(c){
     
     [currentUserObj, ...others].forEach(u => {
         if(!u) return;
-        const readVols = db.read.filter(r => r.userId === u.id && groupVols.some(gv => gv.id === r.volId)).length;
+        const readVolsCount = db.read.filter(r => r.userId === u.id && groupVols.some(gv => gv.id === r.volId)).length;
         const readSeriesList = groupSeries.filter(s => {
             const vids = groupVols.filter(v => v.seriesId === s.id).map(v=>v.id);
             return vids.length > 0 && vids.every(vid => db.read.some(r => r.volId === vid && r.userId === u.id));
         });
-        const readSagas = groupSagas.filter(sg => {
+        const readSagasList = groupSagas.filter(sg => {
             const sIds = groupSeries.filter(s => s.sagaId === sg.id).map(s=>s.id);
             return sIds.length > 0 && sIds.every(sid => readSeriesList.some(rs => rs.id === sid));
-        }).length;
+        });
 
-        const pV = groupVols.length ? Math.round((readVols/groupVols.length)*100) : 0;
+        const pV = groupVols.length ? Math.round((readVolsCount/groupVols.length)*100) : 0;
         const pS = groupSeries.length ? Math.round((readSeriesList.length/groupSeries.length)*100) : 0;
-        const pSG = groupSagas.length ? Math.round((readSagas/groupSagas.length)*100) : 0;
+        const pSG = groupSagas.length ? Math.round((readSagasList.length/groupSagas.length)*100) : 0;
 
         const fasceS = { "100": 0, "75": 0, "50": 0, "25": 0, "0": 0 };
         groupSeries.forEach(s => {
@@ -215,13 +217,27 @@ function statsTab(c){
 
         document.getElementById("userStats").innerHTML += `<div class="card">
             <h3 style="margin-top:0; color:${u.color}">${u.name} ${u.id===db.currentUser?'(Tu)':''}</h3>
-            <div style="font-size:13px">
-                Saghe: <b>${readSagas}</b> / ${groupSagas.length} (${pSG}%)<br>
-                Serie: <b>${readSeriesList.length}</b> / ${groupSeries.length} (${pS}%)<br>
-                Volumi: <b>${readVols}</b> / ${groupVols.length} (${pV}%)
-            </div>
-            <div style="background:#eee; height:8px; border-radius:4px; margin:10px 0; overflow:hidden"><div style="background:${u.color}; width:${pV}%; height:100%"></div></div>
             
+            <div class="small"><b>SAGHE COMPLETE</b> (${readSagasList.length}/${groupSagas.length})</div>
+            <div class="progress-container"><div class="progress-bar" style="background:${u.color}; width:${pSG}%"></div></div>
+
+            <div class="small"><b>SERIE COMPLETE</b> (${readSeriesList.length}/${groupSeries.length})</div>
+            <div class="progress-container"><div class="progress-bar" style="background:${u.color}; width:${pS}%"></div></div>
+
+            <div class="small"><b>VOLUMI LETTI</b> (${readVolsCount}/${groupVols.length})</div>
+            <div class="progress-container"><div class="progress-bar" style="background:${u.color}; width:${pV}%"></div></div>
+            
+            <div style="margin-top:20px">
+                <span class="small"><b>DETTAGLIO SAGHE</b></span>
+                <div class="pill-row">
+                    <span class="pill" style="border-color:var(--success)">100%: ${fasceSG["100"]}</span>
+                    <span class="pill" style="border-color:var(--warn)">75-99%: ${fasceSG["75"]}</span>
+                    <span class="pill">50-74%: ${fasceSG["50"]}</span>
+                    <span class="pill">25-49%: ${fasceSG["25"]}</span>
+                    <span class="pill">0-24%: ${fasceSG["0"]}</span>
+                </div>
+            </div>
+
             <div style="margin-top:15px">
                 <span class="small"><b>DETTAGLIO SERIE</b></span>
                 <div class="pill-row">
@@ -232,24 +248,13 @@ function statsTab(c){
                     <span class="pill">0-24%: ${fasceS["0"]}</span>
                 </div>
             </div>
-
-            <div style="margin-top:15px">
-                <span class="small"><b>DETTAGLIO SAGHE</b></span>
-                <div class="pill-row">
-                    <span class="pill" style="border-color:var(--success)">100%: ${fasceSG["100"]}</span>
-                    <span class="pill" style="border-color:var(--warn)">75-99%: ${fasceSG["75"]}</span>
-                    <span class="pill">50-74%: ${fasceSG["50"]}</span>
-                    <span class="pill">25-49%: ${fasceSG["25"]}</span>
-                    <span class="pill">0-24%: ${fasceSG["0"]}</span>
-                </div>
-            </div>
         </div>`;
     });
 }
 
 /* ================= FUMETTERIA ================= */
 function fumetteriaTab(c){
-  c.innerHTML = `<h2 class="section-title">Fumetteria</h2><div class="card"><input type="text" id="fSearch" placeholder="Cerca serie..." oninput="renderFumetteria()"><div style="display:flex; gap:5px; margin-top:10px; flex-wrap:wrap"><button class="ok" style="flex:1" onclick="renderFumetteria('ALL')">Tutti</button><button class="ok" style="flex:1; background:var(--warn); color:#333" onclick="renderFumetteria('OUT')">In Uscita / Gaps</button><button class="ok" style="flex:1; background:var(--blue)" onclick="renderFumetteria('START')">Da Iniziare</button></div></div><div id="fList"></div>`;
+  c.innerHTML = `<h2 class="section-title">Fumetteria</h2><div class="card"><input type="text" id="fSearch" placeholder="Cerca serie..." oninput="renderFumetteria()"><div style="display:flex; gap:5px; margin-top:10px; flex-wrap:wrap"><button class="ok" style="flex:1" onclick="renderFumetteria('ALL')">Tutti</button><button class="ok" style="flex:1; background:var(--warn); color:#333" onclick="renderFumetteria('OUT')">In Uscita / Mancanti</button><button class="ok" style="flex:1; background:var(--blue)" onclick="renderFumetteria('START')">Da Iniziare</button></div></div><div id="fList"></div>`;
   renderFumetteria();
 }
 window.renderFumetteria = (filterType = 'ALL') => {
@@ -258,18 +263,17 @@ window.renderFumetteria = (filterType = 'ALL') => {
     db.series.filter(s => s.groupId === gid && s.name.toLowerCase().includes(query)).forEach(sr => {
         const vols = db.volumes.filter(v => v.seriesId === sr.id && v.groupId === gid).map(v=>v.number);
         const max = vols.length > 0 ? Math.max(...vols) : 0;
-        let gaps = []; for(let i=1; i<max; i++) if(!vols.includes(i)) gaps.push(i);
+        let missing = []; for(let i=1; i<max; i++) if(!vols.includes(i)) missing.push(i);
         let inList = (db.outgoing || []).filter(o => o.seriesId === sr.id).sort((a,b)=>a.number-b.number);
         let nextV = inList.length > 0 ? Math.max(...inList.map(o=>o.number)) + 1 : max + 1;
         
-        // Filtro logico richiesto da Simone
         if(filterType === 'START' && sr.status !== 'Non Posseduta') return;
-        if(filterType === 'OUT' && (sr.status === 'Non Posseduta' || (inList.length === 0 && gaps.length === 0))) return;
-        if(filterType === 'ALL' && sr.status === 'Non Posseduta') return; // Nella scheda generale non voglio i "non posseduti"
+        if(filterType === 'OUT' && (sr.status === 'Non Posseduta' || (inList.length === 0 && missing.length === 0))) return;
+        if(filterType === 'ALL' && sr.status === 'Non Posseduta') return;
 
-        if(gaps.length > 0 || sr.status === "In Corso" || sr.status === "Non Posseduta" || inList.length > 0) {
+        if(missing.length > 0 || sr.status === "In Corso" || sr.status === "Non Posseduta" || inList.length > 0) {
             h += `<div class="card"><div class="row-edit" style="border:none"><div class="col-cover"><img src="${sr.img}" class="cover-big"></div><div class="col-info"><b>${sr.name}</b><br><div style="display:flex; flex-wrap:wrap; margin-top:10px">
-                ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic" style="border-color:var(--danger); color:var(--danger)">${n}</span></div>`).join('')}
+                ${missing.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic" style="border-color:var(--danger); color:var(--danger)">${n}</span></div>`).join('')}
                 ${inList.map(o => `<div class="vol-container"><span class="badge bg-warn">IN USCITA</span><span class="volumeStatic" style="border-color:var(--warn); cursor:pointer" onclick="toggleOutgoing('${sr.id}', ${o.number})">${o.number}</span></div>`).join('')}
                 ${(sr.status === 'In Corso' || sr.status === 'Non Posseduta') ? `<div class="vol-container"><span class="badge ${sr.status==='Non Posseduta'?'bg-blue':'bg-gray'}">${sr.status==='Non Posseduta'?'DA INIZIARE':'PROSSIMO'}</span><div style="display:flex"><span class="volumeStatic" style="cursor:pointer; border-radius:6px 0 0 6px" onclick="toggleOutgoing('${sr.id}', ${nextV})">${nextV}</span><button onclick="toggleOutgoing('${sr.id}', ${nextV})" style="width:30px; border:1px solid #eee; border-left:none; border-radius:0 6px 6px 0; background:#fff; cursor:pointer">+</button></div></div>` : ''}
             </div></div></div></div>`;
@@ -288,7 +292,10 @@ function adviceTab(c){
     c.innerHTML = `<h2 class="section-title">Consigli di Lettura</h2>
     <div class="card">
         <select id="adviceFilter"><option value="CONTINUE">Continua a leggere</option><option value="SAGAS">Altre serie delle tue saghe</option><option value="OTHERS">Gli altri sono più avanti di te</option><option value="READ_BY_OTHERS">Lette da altri utenti</option><option value="NEW">Serie mai iniziate</option></select>
-        <button class="ok" style="width:100%; margin-top:10px" onclick="renderAdviceList()">CERCA CONSIGLI</button>
+        <div style="margin:10px 0; font-size:14px; display:flex; align-items:center; gap:8px">
+            <input type="checkbox" id="excludeVol1" style="width:auto"> <label for="excludeVol1">Escludi serie da iniziare (Vol. 1)</label>
+        </div>
+        <button class="ok" style="width:100%" onclick="renderAdviceList()">CERCA CONSIGLI</button>
     </div>
     <div id="adviceRes"></div>`;
     renderAdviceList();
@@ -296,6 +303,7 @@ function adviceTab(c){
 window.renderAdviceList = () => {
     const gid = getActiveGroup(); const myId = db.currentUser;
     const filter = document.getElementById("adviceFilter").value;
+    const excludeVol1 = document.getElementById("excludeVol1").checked;
     const others = db.users.filter(u=>u.id!==myId && u.groupId===gid);
     const allS = db.series.filter(s => s.groupId === gid && s.status !== 'Non Posseduta');
 
@@ -305,6 +313,8 @@ window.renderAdviceList = () => {
         const myReadCount = db.read.filter(rd => rd.userId === myId && vids.includes(rd.volId)).length;
         const myPerc = vids.length ? Math.round((myReadCount / vids.length) * 100) : 0;
         
+        if(excludeVol1 && myReadCount === 0) return; // Salta se richiesto da Simone
+
         let match = false;
         if(filter === "CONTINUE" && myReadCount > 0 && myReadCount < vids.length) match = true;
         else if(filter === "SAGAS") {
@@ -319,7 +329,6 @@ window.renderAdviceList = () => {
         if(match) list.push({ ...s, myPerc });
     });
 
-    // ORDINAMENTO: Percentuale decrescente, poi Alfabetico
     list.sort((a,b) => b.myPerc - a.myPerc || a.name.localeCompare(b.name));
 
     document.getElementById("adviceRes").innerHTML = `<div class="advice-grid">${list.map(s => {
