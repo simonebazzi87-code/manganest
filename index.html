@@ -511,48 +511,69 @@
 
 
 window.rFum = () => {
-            const gid = getActiveGroup(); 
-            let h = "";
+    const gid = getActiveGroup(); 
+    let h = "";
+    
+    // 1. GESTIONE TAB "DA INIZIARE"
+    if (curFumTab === "da iniziare") {
+        // Cerchiamo le serie che hanno la parola "iniziare" nello stato (non importa maiuscole o minuscole)
+        const sDaI = db.series.filter(s => s.groupId === gid && s.status.toLowerCase().includes("iniziare"));
+        
+        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
+                <b>SERIE DA INIZIARE:</b><br>
+                ${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie trovata.'}
+             </div>
+             <div class="card">
+                <h3>Wishlist (Appunti)</h3>
+                <input id="wiT" placeholder="Titolo">
+                <input id="wiV" type="number" placeholder="Volumi">
+                <button class="ok" onclick="addWi()">AGGIUNGI</button>
+             </div>`;
+        
+        db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
+            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center">
+                    <span><b>${w.title}</b> (${w.vols} vol)</span>
+                    <button class="danger" onclick="delWi('${w.id}')">X</button>
+                  </div>`; 
+        });
+    } 
+    // 2. GESTIONE ALTRE TAB (Tutto, Da Prendere, Mancanti)
+    else {
+        // Mostriamo SOLO le serie "In Corso"
+        db.series.filter(s => s.groupId === gid && s.status === "In Corso")
+        .sort((a,b)=>a.name.localeCompare(b.name))
+        .forEach(sr => {
+            const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
+            const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
+            const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
             
-            // Caso 1: Tab "DA INIZIARE"
-            if (curFumTab === "da iniziare") {
-                const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
-                h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE:</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie impostata come "Da Iniziare".'}</div>
-                     <div class="card"><h3>Wishlist (Appunti)</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
-                db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
-                    h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; 
-                });
-            } 
-            // Caso 2: Altre Tab (Tutto, Da Prendere, Mancanti)
-            else {
-                db.series.filter(s => s.groupId === gid && s.status !== "Da Iniziare")
-                .sort((a,b)=>a.name.localeCompare(b.name))
-                .forEach(sr => {
-                    const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
-                    const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
-                    const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
-                    
-                    // Logica Tasto NEXT: guarda il più alto tra posseduti e già in lista
-                    const maxL = inL.length ? Math.max(...inL) : 0;
-                    const nextN = Math.max(maxP, maxL) + 1;
+            const maxL = inL.length ? Math.max(...inL) : 0;
+            const nextN = Math.max(maxP, maxL) + 1;
 
-                    let show = (curFumTab === "tutto") || 
-                               (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || 
-                               (curFumTab === "mancanti" && gaps.length > 0);
+            let show = false;
+            if (curFumTab === "tutto") show = true;
+            if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
+            if (curFumTab === "mancanti" && gaps.length > 0) show = true;
 
-                    if (show) { 
-                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px"><div style="flex:1"><b>${sr.name}</b>
-                        <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
-                            ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
-                            ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
-                            ${(sr.status === 'In Corso') ? `<div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button></div>` : ''}
-                        </div></div></div></div>`; 
-                    }
-                });
+            if (show) { 
+                h += `<div class="card">
+                        <div class="row-edit">
+                            <img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px">
+                            <div style="flex:1">
+                                <b>${sr.name}</b>
+                                <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
+                                    ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
+                                    ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
+                                    <div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button></div>
+                                </div>
+                            </div>
+                        </div>
+                      </div>`; 
             }
-            document.getElementById("fList").innerHTML = h || "Nessuna serie trovata.";
-        };
-
+        });
+    }
+    document.getElementById("fList").innerHTML = h || '<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie trovata.</p>';
+};
 
 
 
