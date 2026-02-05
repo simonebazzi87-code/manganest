@@ -496,7 +496,7 @@
 
 
 
-// --- FUMETTERIA AGGIORNATA (LOGICA NEXT INFINITA + SCHEDA DA INIZIARE) ---
+// --- SEZIONE FUMETTERIA AGGIORNATA ---
         function fumetteriaTab(c) {
             c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2>
                 <div class="tabs-fume">
@@ -509,176 +509,51 @@
 
         window.rFum = () => {
             const gid = getActiveGroup(); let h = "";
-            
             if (curFumTab === "da iniziare") {
-                // Mostra le serie con stato "Da Iniziare"
-                const sDaIniziare = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
-                h = `<div class="card" style="background:#f0f0f0; border-left:5px solid var(--blue)">
-                        <b>Serie impostate come "DA INIZIARE":</b><br>
-                        ${sDaIniziare.length ? sDaIniziare.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie con questo stato.'}
-                     </div>`;
-                
-                // Wishlist classica
-                h += `<div class="card"><h3>Pianifica Nuove Serie (Wishlist)</h3>
-                     <input id="wiT" placeholder="Titolo Nuova Serie"><input id="wiV" type="number" placeholder="Volumi totali"><button class="ok" onclick="addWi()">AGGIUNGI AI DESIDERI</button></div>`;
-                db.wishlist.filter(w => w.groupId === gid).forEach(w => {
-                    h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`;
-                });
+                const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
+                h = `<div class="card" style="background:#f0f0f0; border-left:5px solid var(--blue)"><b>Serie "DA INIZIARE":</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna.'}</div><div class="card"><h3>Wishlist</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
+                db.wishlist.filter(w => w.groupId === gid).forEach(w => { h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; });
             } else {
-                db.series.filter(s => s.groupId === gid).sort((a, b) => a.name.localeCompare(b.name)).forEach(sr => {
-                    const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number);
-                    const maxPosseduto = vs.length ? Math.max(...vs) : 0;
-                    
-                    // Calcolo Buchi (Mancanti)
-                    let gaps = []; for (let i = 1; i < maxPosseduto; i++) if (!vs.includes(i)) gaps.push(i);
-                    
-                    // Calcolo Da Prendere (Lista Outgoing)
+                db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
+                    const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
+                    let gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
                     let inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
-                    const maxInLista = inL.length ? Math.max(...inL) : 0;
-                    
-                    // Il "Next" è il massimo tra quello che ho e quello che ho già messo in lista + 1
-                    const prossimoNumero = Math.max(maxPosseduto, maxInLista) + 1;
-
-                    let show = false;
-                    if (curFumTab === "tutto" && (sr.status === "In Corso" || gaps.length > 0 || inL.length > 0)) show = true;
-                    if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
-                    if (curFumTab === "mancanti" && gaps.length > 0) show = true;
-
-                    if (show) {
-                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px">
-                            <div style="flex:1"><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
-                                ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
-                                ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
-                                ${(sr.status === 'In Corso') ? `<div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${prossimoNumero})">${prossimoNumero} +</button></div>` : ''}
-                            </div></div></div></div>`;
-                    }
+                    const maxL = inL.length ? Math.max(...inL) : 0, nextN = Math.max(maxP, maxL) + 1;
+                    let show = (curFumTab === "tutto" && (sr.status === "In Corso" || gaps.length > 0 || inL.length > 0)) || (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || (curFumTab === "mancanti" && gaps.length > 0);
+                    if (show) { h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px"><div style="flex:1"><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}${(sr.status === 'In Corso') ? `<div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button></div>` : ''}</div></div></div></div>`; }
                 });
             }
-            document.getElementById("fList").innerHTML = h || "Nessun volume trovato.";
+            document.getElementById("fList").innerHTML = h || "Nessun volume.";
         };
 
-        window.addWi = () => { 
-            const t = document.getElementById("wiT").value;
-            if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }
-        };
+        window.addWi = () => { const t = document.getElementById("wiT").value; if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }};
         window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
-        window.tglOut = (sid, n) => {
-            const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n);
-            if (idx > -1) db.outgoing.splice(idx, 1); 
-            else db.outgoing.push({ seriesId: sid, number: n });
-            save(); 
-            rFum(); // Ricarica subito per mostrare il nuovo tasto +
-        };
+        window.tglOut = (sid, n) => { const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n); if (idx > -1) db.outgoing.splice(idx, 1); else db.outgoing.push({ seriesId: sid, number: n }); save(); rFum(); };
 
-
-        
-        // --- GESTIONE UTENTI E GRUPPI ---
+    // --- GESTIONE UTENTI E GRUPPI ---
         function usersTab(c) {
-            c.innerHTML = `
-                <h2 class="section-title">GESTIONE GRUPPI</h2>
-                <div class="card">
-                    <input id="gn" placeholder="Nome Nuovo Gruppo">
-                    <button class="ok" onclick="cG()">CREA GRUPPO</button>
-                </div>
-                <div id="gL"></div>
-                
-                <h2 class="section-title">GESTIONE PROFILI</h2>
-                <div id="uList"></div>
-                <div class="card">
-                    <h3>Nuovo Profilo</h3>
-                    <input id="un" placeholder="Nome Profilo">
-                    <select id="ug">${db.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}</select>
-                    <div style="display:flex; align-items:center; gap:10px; margin:5px 0">
-                        <label>Colore:</label><input type="color" id="uc" value="#6c5ce7" style="width:50px; padding:2px">
-                    </div>
-                    <button class="ok" onclick="cU()">AGGIUNGI PROFILO</button>
-                </div>`;
-
-            const gL = document.getElementById("gL");
-            db.groups.forEach(g => {
-                const card = document.createElement("div");
-                card.className = "card";
-                card.style = "display:flex; justify-content:space-between; align-items:center";
-                card.innerHTML = `<b>${g.name}</b> ${g.id !== 'default' ? `<button class="danger" onclick="dG('${g.id}')">ELIMINA</button>` : ''}`;
-                gL.appendChild(card);
-            });
-
-            const uList = document.getElementById("uList");
-            db.users.forEach(u => {
-                uList.innerHTML += `
-                    <div class="card">
-                        <input id="un-${u.id}" value="${u.name}">
-                        <select id="ug-${u.id}">${db.groups.map(g => `<option value="${g.id}" ${u.groupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}</select>
-                        <div style="display:flex; align-items:center; gap:10px; margin:5px 0">
-                            <label>Colore:</label><input type="color" id="uc-${u.id}" value="${u.color}" style="width:50px; padding:2px">
-                        </div>
-                        <div style="display:flex; gap:5px; margin-top:5px">
-                            <button class="ok" style="flex:1" onclick="upU('${u.id}')">SALVA</button>
-                            <button class="danger" onclick="dU('${u.id}')">ELIMINA</button>
-                        </div>
-                    </div>`;
-            });
+            c.innerHTML = `<h2 class="section-title">GRUPPI</h2><div class="card"><input id="gn" placeholder="Nome Gruppo"><button class="ok" onclick="cG()">CREA</button></div><div id="gL"></div><h2 class="section-title">PROFILI</h2><div id="uList"></div><div class="card"><h3>Nuovo</h3><input id="un" placeholder="Nome"><select id="ug">${db.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}</select><input type="color" id="uc" value="#6c5ce7"><button class="ok" onclick="cU()">AGGIUNGI</button></div>`;
+            db.groups.forEach(g => { document.getElementById("gL").innerHTML += `<div class="card" style="display:flex; justify-content:space-between"><b>${g.name}</b> ${g.id!=='default'?`<button class="danger" onclick="dG('${g.id}')">X</button>`:''}</div>`; });
+            db.users.forEach(u => { document.getElementById("uList").innerHTML += `<div class="card"><input id="un-${u.id}" value="${u.name}"><select id="ug-${u.id}">${db.groups.map(g => `<option value="${g.id}" ${u.groupId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}</select><input type="color" id="uc-${u.id}" value="${u.color}"><div style="display:flex; gap:5px; margin-top:5px"><button class="ok" style="flex:1" onclick="upU('${u.id}')">SALVA</button><button class="danger" onclick="dU('${u.id}')">X</button></div></div>`; });
         }
-
         window.cG = () => { const n = document.getElementById("gn").value.trim(); if(n){ db.groups.push({id:crypto.randomUUID(), name:n}); save(); usersTab(app); }};
         window.cU = () => { const n = document.getElementById("un").value.trim(); if(n){ db.users.push({id:crypto.randomUUID(), name:n, groupId:document.getElementById("ug").value, color:document.getElementById("uc").value}); save(); usersTab(app); }};
+        window.upU = (id) => { const u = db.users.find(x => x.id === id); u.name = document.getElementById(`un-${id}`).value; u.groupId = document.getElementById(`ug-${id}`).value; u.color = document.getElementById(`uc-${id}`).value; save(); render(); };
+        window.dG = (id) => { if(confirm("X?")){ db.groups = db.groups.filter(x => x.id !== id); save(); usersTab(app); }};
+        window.dU = (id) => { if(db.users.length > 1 && confirm("X?")){ db.users = db.users.filter(x => x.id !== id); if(db.currentUser === id) db.currentUser = null; save(); render(); }};
+
+
+    // --- BACKUP E AVVIO ---
+        function backupMenu(c) { c.innerHTML = `<h2 class="section-title">BACKUP</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div><div class="card"><input type="file" id="importFile" onchange="impDB(this)" style="display:none"><button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button></div>`; }
+        window.exDB = () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = `manganest_backup.json`; a.click(); };
+        window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("X"); }}; r.readAsText(i.files[0]); };
+
+        render();    
+
+
+
+
         
-        window.upU = (id) => { 
-            const u = db.users.find(x => x.id === id); 
-            u.name = document.getElementById(`un-${id}`).value; 
-            u.groupId = document.getElementById(`ug-${id}`).value; 
-            u.color = document.getElementById(`uc-${id}`).value; 
-            save(); render(); 
-        };
-
-        window.dG = (id) => { 
-            if(confirm("Eliminare il gruppo?")){ 
-                db.groups = db.groups.filter(x => x.id !== id); 
-                save(); usersTab(app); 
-            }
-        };
-
-        window.dU = (id) => { 
-            if(db.users.length <= 1) { alert("Deve esserci almeno un utente!"); return; }
-            if(confirm("Eliminare il profilo?")){ 
-                db.users = db.users.filter(x => x.id !== id); 
-                db.read = db.read.filter(r => r.userId !== id);
-                if(db.currentUser === id) db.currentUser = null;
-                save(); render(); 
-            }
-        };
-
-        // --- BACKUP ---
-        function backupMenu(c) { 
-            c.innerHTML = `
-                <h2 class="section-title">BACKUP</h2>
-                <div class="card">
-                    <button class="ok" style="width:100%" onclick="exDB()">ESPORTA BACKUP (JSON)</button>
-                </div>
-                <div class="card">
-                    <input type="file" id="importFile" onchange="impDB(this)" style="display:none">
-                    <button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA BACKUP (JSON)</button>
-                </div>`; 
-        }
-
-        window.exDB = () => { 
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); 
-            const a = document.createElement('a'); a.href = dataStr; a.download = `manganest_backup.json`; a.click(); 
-        };
-
-        window.impDB = (i) => { 
-            const reader = new FileReader(); 
-            reader.onload = (e) => { 
-                try {
-                    db = JSON.parse(e.target.result); 
-                    save(); location.reload();
-                } catch(err) { alert("File non valido!"); }
-            }; 
-            reader.readAsText(i.files[0]); 
-        };
-
-        // AVVIO
-        render();
     </script>
 </body>
 </html>
