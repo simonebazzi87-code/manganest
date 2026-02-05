@@ -548,6 +548,110 @@
             save(); rFum();
         };
 
+
+// --- FUMETTERIA AGGIORNATA (LOGICA NEXT INFINITA + SCHEDA DA INIZIARE) ---
+        function fumetteriaTab(c) {
+            c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2>
+                <div class="tabs-fume">
+                    ${["tutto", "da prendere", "mancanti", "da iniziare"].map(t => `<button class="tab-f-btn ${curFumTab === t ? 'active' : ''}" onclick="setFumTab('${t}')">${t.toUpperCase()}</button>`).join('')}
+                </div><div id="fList"></div>`;
+            rFum();
+        }
+
+        window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
+
+        window.rFum = () => {
+            const gid = getActiveGroup(); let h = "";
+            
+            if (curFumTab === "da iniziare") {
+                // Mostra le serie con stato "Da Iniziare"
+                const sDaIniziare = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
+                h = `<div class="card" style="background:#f0f0f0; border-left:5px solid var(--blue)">
+                        <b>Serie impostate come "DA INIZIARE":</b><br>
+                        ${sDaIniziare.length ? sDaIniziare.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie con questo stato.'}
+                     </div>`;
+                
+                // Wishlist classica
+                h += `<div class="card"><h3>Pianifica Nuove Serie (Wishlist)</h3>
+                     <input id="wiT" placeholder="Titolo Nuova Serie"><input id="wiV" type="number" placeholder="Volumi totali"><button class="ok" onclick="addWi()">AGGIUNGI AI DESIDERI</button></div>`;
+                db.wishlist.filter(w => w.groupId === gid).forEach(w => {
+                    h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`;
+                });
+            } else {
+                db.series.filter(s => s.groupId === gid).sort((a, b) => a.name.localeCompare(b.name)).forEach(sr => {
+                    const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number);
+                    const maxPosseduto = vs.length ? Math.max(...vs) : 0;
+                    
+                    // Calcolo Buchi (Mancanti)
+                    let gaps = []; for (let i = 1; i < maxPosseduto; i++) if (!vs.includes(i)) gaps.push(i);
+                    
+                    // Calcolo Da Prendere (Lista Outgoing)
+                    let inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
+                    const maxInLista = inL.length ? Math.max(...inL) : 0;
+                    
+                    // Il "Next" è il massimo tra quello che ho e quello che ho già messo in lista + 1
+                    const prossimoNumero = Math.max(maxPosseduto, maxInLista) + 1;
+
+                    let show = false;
+                    if (curFumTab === "tutto" && (sr.status === "In Corso" || gaps.length > 0 || inL.length > 0)) show = true;
+                    if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
+                    if (curFumTab === "mancanti" && gaps.length > 0) show = true;
+
+                    if (show) {
+                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px">
+                            <div style="flex:1"><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
+                                ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
+                                ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
+                                ${(sr.status === 'In Corso') ? `<div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${prossimoNumero})">${prossimoNumero} +</button></div>` : ''}
+                            </div></div></div></div>`;
+                    }
+                });
+            }
+            document.getElementById("fList").innerHTML = h || "Nessun volume trovato.";
+        };
+
+        window.addWi = () => { 
+            const t = document.getElementById("wiT").value;
+            if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }
+        };
+        window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
+        window.tglOut = (sid, n) => {
+            const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n);
+            if (idx > -1) db.outgoing.splice(idx, 1); 
+            else db.outgoing.push({ seriesId: sid, number: n });
+            save(); 
+            rFum(); // Ricarica subito per mostrare il nuovo tasto +
+        };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
         // --- GESTIONE UTENTI E GRUPPI ---
         function usersTab(c) {
             c.innerHTML = `
