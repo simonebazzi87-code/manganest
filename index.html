@@ -58,151 +58,34 @@
         
         let statsData = { series: {}, sagas: {} };
         let curFumTab = "tutto";
-        let sessionStarted = false;
         const save = () => localStorage.setItem("manganest_v5", JSON.stringify(db));
         const app = document.getElementById("app");
-        let sessionStarted = false;
         const menu = document.getElementById("menu");
 
         function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
-
-
-
-
-function render() {
-    // 1. Schermata iniziale (Chesta sempre all'avvio)
-    if (!sessionStarted) {
-        app.innerHTML = `
-            <div style="text-align:center; padding:50px 20px;">
-                <h1 style="color:var(--main); font-size:2.5rem; margin-bottom:10px;">MangaNest</h1>
-                <p style="color:#666; margin-bottom:30px;">Bentornato Simone!<br>Cosa vuoi fare?</p>
-                <button class="ok" style="width:100%; margin-bottom:15px; padding:20px; font-size:16px" onclick="document.getElementById('importFileInit').click()">📂 CARICA BACKUP (JSON)</button>
-                <input type="file" id="importFileInit" onchange="impDB(this)" style="display:none">
-                <button class="ok" style="width:100%; background:var(--dark); padding:20px; font-size:16px" onclick="sessionStarted=true; render();">🚀 PROSEGUI CON DATI LOCALI</button>
-            </div>`;
-        return;
-    }
-
-    // 2. Controllo Database
-    if (!db || !db.users || db.users.length === 0) { 
-        db = { users: [{id: "u1", name: "Simone", color: "#6c5ce7", groupId: "default"}], groups: [{id: "default", name: "Principale"}], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
-        save();
-    }
-
-    // 3. Selezione Utente
-    if (!db.currentUser) { selectUser(); return; }
-
-    const u = db.users.find(x => x.id === db.currentUser);
-    if(!u) { db.currentUser = null; selectUser(); return; }
-    
-    // 4. Setup Interfaccia
-    document.documentElement.style.setProperty("--main", u.color);
-    document.getElementById("who").textContent = u.name;
-    document.getElementById("switchUser").style.display = "inline";
-    const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
-    document.getElementById("groupLabel").textContent = `[${g.name}]`;
-    
-    // 5. Menu
-    menu.innerHTML = "";
-    [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
-        const b = document.createElement("button"); 
-        b.textContent = t;
-        if (curTab === t) b.classList.add('active');
-        b.onclick = () => { curTab = t; render(); };
-        menu.appendChild(b);
-    });
-
-    // 6. Caricamento Tab
-    if(curTab === "DATABASE") searchDB(app);
-    else if(curTab === "SERIE") addSeries(app);
-    else if(curTab === "NUMERI") addVolumes(app);
-    else if(curTab === "LETTO") readTab(app);
-    else if(curTab === "CONSIGLI") adviceTab(app);
-    else if(curTab === "STATISTICHE") statsTab(app);
-    else if(curTab === "FUMETTERIA") fumetteriaTab(app);
-    else if(curTab === "UTENTI") usersTab(app);
-    else if(curTab === "BACKUP") backupMenu(app);
-    else searchDB(app);
-}
-
-function selectUser() {
-    app.innerHTML = `<div style="text-align:center; padding:40px 20px;"><h2 class="section-title" style="border:none; text-align:center">CHI SEI?</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:20px">${db.users.map(u => `<button class="ok" style="background:${u.color}; padding:20px" onclick="setU('${u.id}')">${u.name}</button>`).join('')}</div></div>`;
-}
-window.setU = (id) => { db.currentUser = id; save(); render(); };
-
-function searchDB(c) { c.innerHTML = `<h2 class="section-title">DATABASE</h2><div class="card"><input type="text" id="dbS" placeholder="Cerca..." oninput="doS()"></div><div id="sRes"></div>`; doS(); }
-window.doS = () => {
-    const q = document.getElementById("dbS")?.value.toLowerCase() || "";
-    const res = document.getElementById("sRes"); if(!res) return;
-    let h = "";
-    db.sagas.filter(s => s.name.toLowerCase().includes(q)).forEach(s => { h += `<div class="card" onclick="viewSaga('${s.id}')"><b>${s.name}</b> <small>(Saga)</small></div>`; });
-    db.series.filter(s => s.name.toLowerCase().includes(q)).forEach(s => { h += `<div class="card" onclick="viewSeries('${s.id}')"><b>${s.name}</b> <small>(${s.publisher})</small></div>`; });
-    res.innerHTML = h;
-};
-
-function fumetteriaTab(c) {
-    c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2><div class="tabs-fume">
-        <button class="tab-f-btn ${curFumTab==='tutto'?'active':''}" onclick="curFumTab='tutto'; rFum()">TUTTO</button>
-        <button class="tab-f-btn ${curFumTab==='da prendere'?'active':''}" onclick="curFumTab='da prendere'; rFum()">DA PRENDERE</button>
-        <button class="tab-f-btn ${curFumTab==='mancanti'?'active':''}" onclick="curFumTab='mancanti'; rFum()">MANCANTI</button>
-        <button class="tab-f-btn ${curFumTab==='da iniziare'?'active':''}" onclick="curFumTab='da iniziare'; rFum()">DA INIZIARE</button>
-    </div><div id="fList"></div>`;
-    rFum();
-}
-
-window.rFum = () => {
-    const gid = getActiveGroup(); let h = "";
-    if (curFumTab === "da iniziare") {
-        const sDaI = db.series.filter(s => {
-            const hasNoVols = db.volumes.filter(v => v.seriesId === s.id).length === 0;
-            const statusMatch = (s.status || "").toLowerCase().includes("iniziare");
-            return s.groupId === gid && (hasNoVols || statusMatch);
-        });
-        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE NUOVE:</b></div>`;
-        sDaI.forEach(sr => {
-            h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:70px; height:100px; object-fit:cover; border-radius:4px"><div style="flex:1"><b>${sr.name}</b><br><small>${sr.status}</small><br><button class="ok" style="margin-top:10px" onclick="tglOut('${sr.id}', 1)">+ VOL 1</button></div></div></div>`;
-        });
-    } else {
-        // Logica standard per le altre tab (Tutto/Prendere/Mancanti)
-        db.series.filter(s => s.groupId === gid && s.status === "In Corso").forEach(sr => {
-            const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
-            const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
-            const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number);
-            const nextN = Math.max(maxP, (inL.length?Math.max(...inL):0)) + 1;
-            let show = (curFumTab === "tutto") || (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || (curFumTab === "mancanti" && gaps.length > 0);
-            if (show) {
-                h += `<div class="card"><b>${sr.name}</b><div style="display:flex; gap:5px; margin-top:5px">
-                    ${gaps.map(n => `<button class="danger" onclick="tglOut('${sr.id}', ${n})">${n}</button>`).join('')}
-                    ${inL.map(n => `<button class="bg-warn" onclick="tglOut('${sr.id}', ${n})">${n} X</button>`).join('')}
-                    <button class="ok" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button>
-                </div></div>`;
+        function render() {
+            if (!db) {
+                app.innerHTML = `
+                    <div class="welcome-screen">
+                        <h1>Benvenuto su MangaNest</h1>
+                        <p>Scegli come iniziare:</p>
+                        <button class="ok" style="width:100%; margin-bottom:10px" onclick="initNew()">INIZIA DA ZERO</button>
+                        <input type="file" id="firstImport" style="display:none" onchange="impDB(this)">
+                        <button class="ok" style="width:100%; background:var(--dark)" onclick="document.getElementById('firstImport').click()">IMPORTA BACKUP JSON</button>
+                    </div>`;
+                return;
             }
-        });
-    }
-    document.getElementById("fList").innerHTML = h;
-};
-// Nota: qui andrebbero anche addSeries, addVolumes, ecc. ma per ora ripristiniamo l'accesso.
 
-
-
-
-
-
-
-
-
-
-        
-
-function initDefault() {
-    const gId = crypto.randomUUID();
-    db.groups = [{id: gId, name: 'Miei Manga'}];
-    db.users = [{id: crypto.randomUUID(), name: 'Simone', groupId: gId, color: '#6c5ce7'}];
-    save(); 
-    render();
-}
-        
+            if (!db.currentUser) {
+                app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>CHI SEI?</h3><div id='uL' style='display:flex; justify-content:center; gap:15px; flex-wrap:wrap'></div>";
+                db.users.forEach(u => {
+                    const b = document.createElement("button"); b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px";
+                    b.onclick = () => { db.currentUser = u.id; save(); render(); };
+                    document.getElementById('uL').appendChild(b);
+                });
+                return;
+            }
 
             const u = db.users.find(u => u.id === db.currentUser);
             document.documentElement.style.setProperty("--main", u.color);
@@ -626,48 +509,37 @@ function initDefault() {
 
 
 
+
 window.rFum = () => {
     const gid = getActiveGroup(); 
     let h = "";
     
-    // 1. SCHEDA "DA INIZIARE" (NUOVA LOGICA CON FOTO)
-
+    // 1. GESTIONE TAB "DA INIZIARE"
     if (curFumTab === "da iniziare") {
-        const gid = getActiveGroup();
-        const sDaI = db.series.filter(s => {
-            const hasNoVols = db.volumes.filter(v => v.seriesId === s.id).length === 0;
-            const statusMatch = (s.status || "").toLowerCase().includes("iniziare");
-            return s.groupId === gid && (hasNoVols || statusMatch);
-        });
-
-        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE:</b></div>`;
+        // Cerchiamo le serie che hanno la parola "iniziare" nello stato (non importa maiuscole o minuscole)
+        const sDaI = db.series.filter(s => s.groupId === gid && s.status.toLowerCase().includes("iniziare"));
         
-        sDaI.sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
-            h += `<div class="card">
-                    <div class="row-edit">
-                        <img src="${sr.img}" style="width:70px; height:100px; object-fit:cover; border-radius:4px; background:#eee">
-                        <div style="flex:1">
-                            <b>${sr.name}</b><br>
-                            <small style="color:#666">${sr.publisher || ''} - ${sr.status}</small>
-                            <div style="margin-top:10px">
-                                <button class="ok" style="padding:6px 12px; font-size:12px" onclick="tglOut('${sr.id}', 1)">+ METTI VOL. 1 IN LISTA</button>
-                            </div>
-                        </div>
-                    </div>
-                  </div>`;
-        });
+        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
+                <b>SERIE DA INIZIARE:</b><br>
+                ${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie trovata.'}
+             </div>
+             <div class="card">
+                <h3>Wishlist (Appunti)</h3>
+                <input id="wiT" placeholder="Titolo">
+                <input id="wiV" type="number" placeholder="Volumi">
+                <button class="ok" onclick="addWi()">AGGIUNGI</button>
+             </div>`;
         
-        // Wishlist (mantieni il codice che avevi sotto...)
-
-        // Wishlist in fondo alla scheda
-        h += `<div class="card" style="margin-top:20px"><h3>Wishlist (Appunti)</h3><div style="display:flex; gap:5px"><input id="wiT" placeholder="Titolo" style="flex:2"><input id="wiV" type="number" placeholder="Vol" style="flex:1"></div><button class="ok" style="width:100%; margin-top:5px" onclick="addWi()">AGGIUNGI</button></div>`;
         db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
-            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:10px"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" style="padding:5px 10px" onclick="delWi('${w.id}')">X</button></div>`; 
+            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center">
+                    <span><b>${w.title}</b> (${w.vols} vol)</span>
+                    <button class="danger" onclick="delWi('${w.id}')">X</button>
+                  </div>`; 
         });
     } 
-    
-    // 2. TUTTE LE ALTRE SCHEDE (LOGICA ORIGINALE NEST6)
+    // 2. GESTIONE ALTRE TAB (Tutto, Da Prendere, Mancanti)
     else {
+        // Mostriamo SOLO le serie "In Corso"
         db.series.filter(s => s.groupId === gid && s.status === "In Corso")
         .sort((a,b)=>a.name.localeCompare(b.name))
         .forEach(sr => {
@@ -712,6 +584,7 @@ window.rFum = () => {
 
 
 
+
         
 
         window.addWi = () => { const t = document.getElementById("wiT").value; if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }};
@@ -731,34 +604,9 @@ window.rFum = () => {
 
         function backupMenu(c) { c.innerHTML = `<h2 class="section-title">BACKUP</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div><div class="card"><input type="file" id="importFile" onchange="impDB(this)" style="display:none"><button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button></div>`; }
         window.exDB = () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = `manganest_backup.json`; a.click(); };
-
-        window.impDB = (input) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const imported = JSON.parse(e.target.result);
-            if (imported.users && imported.series) {
-                db = imported;
-                save();
-                // --- QUESTA È LA PARTE IMPORTANTE ---
-                sessionStarted = true; // Diciamo all'app che la sessione è attiva
-                render();              // Disegniamo subito l'interfaccia con i nuovi dati
-                // ------------------------------------
-                alert("Backup caricato con successo!");
-            } else {
-                alert("File JSON non valido.");
-            }
-        } catch (err) {
-            alert("Errore nel caricamento del file.");
-        }
-    };
-    reader.readAsText(input.files[0]);
-};
+        window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
 
         render();
-
-
-        
     </script>
 </body>
 </html>
