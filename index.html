@@ -61,32 +61,73 @@
         let sessionStarted = false;
         const save = () => localStorage.setItem("manganest_v5", JSON.stringify(db));
         const app = document.getElementById("app");
+        let sessionStarted = false;
         const menu = document.getElementById("menu");
 
         function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
 
 function render() {
-    // Schermata di avvio (chiesta sempre all'apertura della pagina)
+    // Schermata iniziale: mostrata sempre al refresh (F5)
     if (!sessionStarted) {
         app.innerHTML = `
             <div style="text-align:center; padding:50px 20px;">
                 <h1 style="color:var(--main); font-size:2.5rem; margin-bottom:10px;">MangaNest</h1>
-                <p style="color:#666; margin-bottom:30px;">Bentornato Simone! Come vuoi procedere oggi?</p>
+                <p style="color:#666; margin-bottom:30px;">Bentornato Simone!<br>Come vuoi procedere?</p>
                 
-                <button class="ok" style="width:100%; margin-bottom:15px; padding:20px" onclick="document.getElementById('importFileInit').click()">
-                    CARICA NUOVO BACKUP (JSON)
+                <button class="ok" style="width:100%; margin-bottom:15px; padding:20px; font-size:16px" onclick="document.getElementById('importFileInit').click()">
+                    📂 CARICA BACKUP (JSON)
                 </button>
                 <input type="file" id="importFileInit" onchange="impDB(this)" style="display:none">
                 
-                <button class="ok" style="width:100%; background:var(--dark); padding:20px" onclick="sessionStarted=true; render();">
-                    PROSEGUI CON DATI LOCALI
+                <button class="ok" style="width:100%; background:var(--dark); padding:20px; font-size:16px" onclick="sessionStarted=true; render();">
+                    🚀 PROSEGUI CON DATI LOCALI
                 </button>
                 
                 <p style="margin-top:30px; font-size:12px; color:#999;">Usa "Prosegui" se i dati nel browser sono già aggiornati.</p>
             </div>`;
         return;
     }
+
+    // Se il database è vuoto dopo il caricamento, inizializza Simone
+    if (!db || !db.users || db.users.length === 0) { 
+        db = { users: [{id: "u1", name: "Simone", color: "#6c5ce7", groupId: "default"}], groups: [{id: "default", name: "Principale"}], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
+        save();
+    }
+
+    // Se nessun utente selezionato, mostra scelta profilo
+    if (!db.currentUser) { selectUser(); return; }
+
+    const u = db.users.find(x => x.id === db.currentUser);
+    if(!u) { db.currentUser = null; selectUser(); return; }
+    
+    // Configura Tema e Header
+    document.documentElement.style.setProperty("--main", u.color);
+    document.getElementById("who").textContent = u.name;
+    document.getElementById("switchUser").style.display = "inline";
+    const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
+    document.getElementById("groupLabel").textContent = `[${g.name}]`;
+    
+    // Genera Menu
+    menu.innerHTML = "";
+    [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
+        const b = document.createElement("button"); 
+        b.textContent = t;
+        if (curTab === t) b.classList.add('active');
+        b.onclick = () => { 
+            curTab = t;
+            Array.from(menu.children).forEach(x => x.classList.remove('active')); 
+            b.classList.add('active'); 
+            f(app); 
+        };
+        menu.appendChild(b);
+    });
+
+    // Avvia la tab attiva
+    if(curTab === "FUMETTERIA") fumetteriaTab(app);
+    else if(curTab === "SERIE") addSeries(app);
+    else searchDB(app);
+}
 
     // Se non ci sono utenti dopo il caricamento, inizializza default
     if (!db || !db.users || db.users.length === 0) { 
@@ -583,35 +624,33 @@ window.rFum = () => {
     let h = "";
     
     // 1. SCHEDA "DA INIZIARE" (NUOVA LOGICA CON FOTO)
+
     if (curFumTab === "da iniziare") {
+        const gid = getActiveGroup();
         const sDaI = db.series.filter(s => {
             const hasNoVols = db.volumes.filter(v => v.seriesId === s.id).length === 0;
             const statusMatch = (s.status || "").toLowerCase().includes("iniziare");
             return s.groupId === gid && (hasNoVols || statusMatch);
         });
 
-        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE (O CON 0 VOLUMI):</b></div>`;
+        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE:</b></div>`;
         
-        if (sDaI.length === 0) {
-            h += `<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie da iniziare.</p>`;
-        }
-
         sDaI.sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
             h += `<div class="card">
                     <div class="row-edit">
-                        <img src="${sr.img}" class="cover-big" style="width:70px; height:100px; object-fit:cover; border-radius:4px">
+                        <img src="${sr.img}" style="width:70px; height:100px; object-fit:cover; border-radius:4px; background:#eee">
                         <div style="flex:1">
                             <b>${sr.name}</b><br>
-                            <small style="color:#666">${sr.publisher || ''} - Stato: ${sr.status}</small>
+                            <small style="color:#666">${sr.publisher || ''} - ${sr.status}</small>
                             <div style="margin-top:10px">
-                                <button class="ok" style="padding:6px 12px; font-size:12px; background:var(--blue)" onclick="tglOut('${sr.id}', 1)">
-                                    + METTI VOL. 1 IN LISTA
-                                </button>
+                                <button class="ok" style="padding:6px 12px; font-size:12px" onclick="tglOut('${sr.id}', 1)">+ METTI VOL. 1 IN LISTA</button>
                             </div>
                         </div>
                     </div>
                   </div>`;
         });
+        
+        // Wishlist (mantieni il codice che avevi sotto...)
 
         // Wishlist in fondo alla scheda
         h += `<div class="card" style="margin-top:20px"><h3>Wishlist (Appunti)</h3><div style="display:flex; gap:5px"><input id="wiT" placeholder="Titolo" style="flex:2"><input id="wiV" type="number" placeholder="Vol" style="flex:1"></div><button class="ok" style="width:100%; margin-top:5px" onclick="addWi()">AGGIUNGI</button></div>`;
@@ -685,7 +724,29 @@ window.rFum = () => {
 
         function backupMenu(c) { c.innerHTML = `<h2 class="section-title">BACKUP</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div><div class="card"><input type="file" id="importFile" onchange="impDB(this)" style="display:none"><button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button></div>`; }
         window.exDB = () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = `manganest_backup.json`; a.click(); };
-        window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
+
+        window.impDB = (input) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (imported.users && imported.series) {
+                db = imported;
+                save();
+                // --- QUESTA È LA PARTE IMPORTANTE ---
+                sessionStarted = true; // Diciamo all'app che la sessione è attiva
+                render();              // Disegniamo subito l'interfaccia con i nuovi dati
+                // ------------------------------------
+                alert("Backup caricato con successo!");
+            } else {
+                alert("File JSON non valido.");
+            }
+        } catch (err) {
+            alert("Errore nel caricamento del file.");
+        }
+    };
+    reader.readAsText(input.files[0]);
+};
 
         render();
 
