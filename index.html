@@ -507,24 +507,54 @@
 
         window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
 
-        window.rFum = () => {
+window.rFum = () => {
             const gid = getActiveGroup(); let h = "";
             if (curFumTab === "da iniziare") {
+                // Filtra le serie che hanno lo stato "Da Iniziare"
                 const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
-                h = `<div class="card" style="background:#f0f0f0; border-left:5px solid var(--blue)"><b>Serie "DA INIZIARE":</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna.'}</div><div class="card"><h3>Wishlist</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
+                h = `<div class="card" style="background:#f0f0f0; border-left:5px solid var(--blue)"><b>SERIE DA INIZIARE:</b><br>${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie con stato "Da Iniziare".'}</div>
+                     <div class="card"><h3>Wishlist (Appunti rapidi)</h3><input id="wiT" placeholder="Titolo"><input id="wiV" type="number" placeholder="Volumi"><button class="ok" onclick="addWi()">AGGIUNGI</button></div>`;
                 db.wishlist.filter(w => w.groupId === gid).forEach(w => { h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center"><span><b>${w.title}</b> (${w.vols} vol)</span><button class="danger" onclick="delWi('${w.id}')">X</button></div>`; });
             } else {
-                db.series.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
+                // Filtra escludendo le "Da Iniziare" dalla lista normale per non fare confusione
+                db.series.filter(s => s.groupId === gid && s.status !== "Da Iniziare").sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
                     const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
                     let gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
+                    
+                    // Prendo i volumi già messi in lista "da prendere"
                     let inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
-                    const maxL = inL.length ? Math.max(...inL) : 0, nextN = Math.max(maxP, maxL) + 1;
-                    let show = (curFumTab === "tutto" && (sr.status === "In Corso" || gaps.length > 0 || inL.length > 0)) || (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || (curFumTab === "mancanti" && gaps.length > 0);
-                    if (show) { h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px"><div style="flex:1"><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}${(sr.status === 'In Corso') ? `<div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button></div>` : ''}</div></div></div></div>`; }
+                    
+                    // CALCOLO NEXT: guarda il massimo tra quello che HO e quello che DEVO PRENDERE
+                    const maxL = inL.length ? Math.max(...inL) : 0;
+                    const nextN = Math.max(maxP, maxL) + 1;
+
+                    let show = (curFumTab === "tutto") || 
+                               (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || 
+                               (curFumTab === "mancanti" && gaps.length > 0);
+                    
+                    if (show) { 
+                        h += `<div class="card"><div class="row-edit"><img src="${sr.img}" style="width:60px"><div style="flex:1"><b>${sr.name}</b>
+                        <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
+                            ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
+                            ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
+                            ${(sr.status === 'In Corso') ? `<div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button></div>` : ''}
+                        </div></div></div></div>`; 
+                    }
                 });
             }
-            document.getElementById("fList").innerHTML = h || "Nessun volume.";
+            document.getElementById("fList").innerHTML = h || "Nessun volume trovato.";
         };
+
+
+
+
+
+
+
+
+
+
+        
 
         window.addWi = () => { const t = document.getElementById("wiT").value; if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }};
         window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
