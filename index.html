@@ -54,40 +54,39 @@
     <div id="ddBox"><div id="ddTitle" style="font-weight:bold;margin-bottom:10px"></div><div id="ddContent"></div></div>
 
     <script>
-        let db = JSON.parse(localStorage.getItem("manganest_v5")) || null;
+       let db = JSON.parse(localStorage.getItem("mangaNest2026")) || { users: [], groups: [], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
         
-        let statsData = { series: {}, sagas: {} };
-        let curFumTab = "tutto";
-        const save = () => localStorage.setItem("manganest_v5", JSON.stringify(db));
+        // MODIFICHE RICHIESTE
+        let sessionStarted = false; 
+        let adviceFilterSingle = true;
+        let adviceFilterCompleteOnly = false;
+
+        const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
         const app = document.getElementById("app");
         const menu = document.getElementById("menu");
+        let curTab = "DATABASE";
+        let curFumTab = "tutto";
 
-        function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
-        function render() {
-            if (!db) {
+
+     function render() {
+            if (!sessionStarted) {
                 app.innerHTML = `
-                    <div class="welcome-screen">
-                        <h1>Benvenuto su MangaNest</h1>
-                        <p>Scegli come iniziare:</p>
-                        <button class="ok" style="width:100%; margin-bottom:10px" onclick="initNew()">INIZIA DA ZERO</button>
-                        <input type="file" id="firstImport" style="display:none" onchange="impDB(this)">
-                        <button class="ok" style="width:100%; background:var(--dark)" onclick="document.getElementById('firstImport').click()">IMPORTA BACKUP JSON</button>
+                    <div style="text-align:center; padding:50px 20px;">
+                        <h1 style="color:var(--main); font-size:2.5rem; margin-bottom:10px;">MangaNest</h1>
+                        <p style="color:#666; margin-bottom:30px;">Bentornato Simone!<br>Cosa vuoi fare?</p>
+                        <button class="ok" style="width:100%; margin-bottom:15px; padding:20px; font-size:16px" onclick="document.getElementById('importFileInit').click()">📂 CARICA BACKUP (JSON)</button>
+                        <input type="file" id="importFileInit" onchange="impDB(this)" style="display:none">
+                        <button class="ok" style="width:100%; background:var(--dark); padding:20px; font-size:16px" onclick="sessionStarted=true; render();">🚀 PROSEGUI CON DATI LOCALI</button>
                     </div>`;
                 return;
             }
 
-            if (!db.currentUser) {
-                app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>CHI SEI?</h3><div id='uL' style='display:flex; justify-content:center; gap:15px; flex-wrap:wrap'></div>";
-                db.users.forEach(u => {
-                    const b = document.createElement("button"); b.textContent = u.name; b.style.background = u.color; b.className = "ok"; b.style.padding = "20px";
-                    b.onclick = () => { db.currentUser = u.id; save(); render(); };
-                    document.getElementById('uL').appendChild(b);
-                });
-                return;
-            }
-
-            const u = db.users.find(u => u.id === db.currentUser);
+            if (!db || !db.users || db.users.length === 0) { initNew(); return; }
+            if (!db.currentUser) { selectUser(); return; }
+            const u = db.users.find(x => x.id === db.currentUser);
+            if(!u) { db.currentUser = null; selectUser(); return; }
+            
             document.documentElement.style.setProperty("--main", u.color);
             document.getElementById("who").textContent = u.name;
             document.getElementById("switchUser").style.display = "inline";
@@ -96,12 +95,25 @@
             
             menu.innerHTML = "";
             [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
-                const b = document.createElement("button"); b.textContent = t;
-                b.onclick = () => { Array.from(menu.children).forEach(x => x.classList.remove('active')); b.classList.add('active'); f(app); };
+                const b = document.createElement("button"); 
+                b.textContent = t;
+                if (curTab === t) b.classList.add('active');
+                b.onclick = () => { curTab = t; render(); };
                 menu.appendChild(b);
             });
-            searchDB(app);
-        }
+
+            if(curTab === "FUMETTERIA") fumetteriaTab(app);
+            else if(curTab === "SERIE") addSeries(app);
+            else if(curTab === "NUMERI") addVolumes(app);
+            else if(curTab === "LETTO") readTab(app);
+            else if(curTab === "CONSIGLI") adviceTab(app);
+            else if(curTab === "STATISTICHE") statsTab(app);
+            else if(curTab === "UTENTI") usersTab(app);
+            else if(curTab === "BACKUP") backupMenu(app);
+            else searchDB(app);
+        }   
+
+
 
         function initNew() {
             db = { users: [{id: "u1", name: "Utente 1", color: "#6c5ce7", groupId: "default"}], groups: [{id: "default", name: "Principale"}], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
@@ -369,59 +381,58 @@
         };
 
         // --- CONSIGLI (FILTRI E ORDINE DOPPIO) ---
+
+
+let adviceFilterSingle = true;
+        let adviceFilterCompleteOnly = false; // Nuova variabile per il filtro
+
         function adviceTab(c) {
-            c.innerHTML = `<h2 class="section-title">CONSIGLI</h2>
-                <div class="card">
-                    <select id="adF" onchange="rAd()">
-                        <option value="CONT">Continua a leggere</option>
-                        <option value="OTH">Gli altri sono più avanti di te</option>
-                        <option value="NEW_OTH">Non hai iniziato, ma altri sì</option>
-                        <option value="NONE">Nessuno ha iniziato</option>
-                    </select>
-                    <div style="margin-top:10px; font-size:13px">
-                        <input type="checkbox" id="exOne" onchange="rAd()"> Escludi serie con solo 1 volume letto
-                    </div>
+            c.innerHTML = `<h2 class="section-title">CONSIGLI DI LETTURA</h2>
+                <div class="card" style="display:flex; flex-direction:column; gap:10px">
+                    <button class="ok" style="background:${adviceFilterSingle?'var(--main)':'#ccc'}" onclick="adviceFilterSingle=!adviceFilterSingle; adviceTab(app)">
+                        ${adviceFilterSingle ? '✅ ESCLUDI MONOVOLUMI' : '❌ MOSTRA MONOVOLUMI'}
+                    </button>
+                    <button class="ok" style="background:${adviceFilterCompleteOnly?'var(--main)':'#ccc'}" onclick="adviceFilterCompleteOnly=!adviceFilterCompleteOnly; adviceTab(app)">
+                        ${adviceFilterCompleteOnly ? '✅ SOLO SERIE CONCLUSE' : '❌ TUTTE LE SERIE'}
+                    </button>
                 </div>
-                <div id="adRes"></div>`;
-            rAd();
+                <div id="advL"></div>`;
+            renderAdvice();
         }
 
-        window.rAd = () => {
-            const gid = getActiveGroup(), uid = db.currentUser, f = document.getElementById("adF").value;
-            const exOne = document.getElementById("exOne").checked;
-            const otherUsers = db.users.filter(u => u.id !== uid && u.groupId === gid);
-            let list = [];
-            
-            db.series.filter(s => s.groupId === gid).forEach(s => {
-                const vids = db.volumes.filter(v => v.seriesId === s.id).map(v => v.id);
-                if (vids.length === 0) return;
-                const myRead = db.read.filter(r => r.userId === uid && vids.includes(r.volId)).length;
-                if (exOne && myRead === 1) return; 
+        function renderAdvice() {
+            const gid = getActiveGroup();
+            const res = document.getElementById("advL"); if(!res) return;
 
-                const p = Math.round((myRead / vids.length) * 100);
-                let show = false;
-                if (f === "CONT" && myRead > 0 && myRead < vids.length) show = true;
-                if (f === "OTH" || f === "NEW_OTH") {
-                    const maxOth = Math.max(...otherUsers.map(u => db.read.filter(rd => rd.userId === u.id && vids.includes(rd.volId)).length), 0);
-                    if (f === "OTH" && myRead > 0 && maxOth > myRead) show = true;
-                    if (f === "NEW_OTH" && myRead === 0 && maxOth > 0) show = true;
-                }
-                if (f === "NONE" && myRead === 0 && !db.read.some(rd => vids.includes(rd.volId))) show = true;
-                
-                if (show) list.push({ ...s, perc: p });
+            // Calcolo dati e volumi mancanti
+            let list = db.series.filter(s => s.groupId === gid).map(s => {
+                const total = parseInt(s.status.match(/\d+/)?.[0]) || 0;
+                const owned = db.volumes.filter(v => v.seriesId === s.id).length;
+                const read = db.read.filter(r => r.seriesId === s.id).length;
+                const missingToFinish = total > 0 ? (total - read) : 999; 
+                return { ...s, total, owned, read, missingToFinish };
             });
 
-            // Ordine: % Decrescente, poi Alfabetico
-            list.sort((a, b) => b.perc - a.perc || a.name.localeCompare(b.name));
+            // Applicazione Filtri
+            if (adviceFilterSingle) list = list.filter(s => s.total !== 1);
+            if (adviceFilterCompleteOnly) list = list.filter(s => s.status.toLowerCase().includes("conclusa") || s.status.toLowerCase().includes("terminata"));
 
-            document.getElementById("adRes").innerHTML = `<div class="advice-grid">${list.map(s => `
-                <div class="advice-card">
-                    <img src="${s.img}">
+            // Mostra solo se hai volumi da leggere ma non hai finito la serie
+            list = list.filter(s => s.read < s.total && s.owned > 0);
+
+            // ORDINAMENTO: Meno volumi mancano, più in alto appare la serie
+            list.sort((a, b) => a.missingToFinish - b.missingToFinish);
+
+            res.innerHTML = list.map(s => `
+                <div class="card">
                     <b>${s.name}</b><br>
-                    <span class="badge bg-success">${s.perc}% completato</span>
-                </div>`).join('')}</div>`;
-        };
+                    <small style="color:var(--main); font-weight:bold">
+                        🎯 Mancano ${s.missingToFinish} volumi alla fine (${Math.round((s.read/s.total)*100)}%)
+                    </small>
+                </div>`).join('') || `<p style="text-align:center; padding:20px; color:#999">Nessun consiglio.</p>`;
+        }
 
+        
         // --- STATISTICHE (ORDINE E PERCENTUALI) ---
         function statsTab(c) {
             const gid = getActiveGroup();
@@ -496,47 +507,55 @@
 
 
 // --- SEZIONE FUMETTERIA DEFINITIVA ---
-        function fumetteriaTab(c) {
+
+
+function fumetteriaTab(c) {
             c.innerHTML = `<h2 class="section-title">FUMETTERIA</h2>
-                <div class="tabs-fume">
-                    ${["tutto", "da prendere", "mancanti", "da iniziare"].map(t => `<button class="tab-f-btn ${curFumTab === t ? 'active' : ''}" onclick="setFumTab('${t}')">${t.toUpperCase()}</button>`).join('')}
-                </div><div id="fList"></div>`;
+            <div class="tabs-fume">
+                <button class="tab-f-btn ${curFumTab==='tutto'?'active':''}" onclick="curFumTab='tutto'; rFum()">TUTTO</button>
+                <button class="tab-f-btn ${curFumTab==='da prendere'?'active':''}" onclick="curFumTab='da prendere'; rFum()">DA PRENDERE</button>
+                <button class="tab-f-btn ${curFumTab==='mancanti'?'active':''}" onclick="curFumTab='mancanti'; rFum()">MANCANTI</button>
+                <button class="tab-f-btn ${curFumTab==='da iniziare'?'active':''}" onclick="curFumTab='da iniziare'; rFum()">DA INIZIARE</button>
+            </div>
+            <div id="fList"></div>`;
             rFum();
         }
 
-        window.setFumTab = (t) => { curFumTab = t; fumetteriaTab(app); };
+        window.rFum = () => {
+            const gid = getActiveGroup(); let h = "";
+            const fl = document.getElementById("fList"); if(!fl) return;
+
+            if (curFumTab === "da iniziare") {
+                db.series.filter(s => s.groupId === gid && db.volumes.filter(v => v.seriesId === s.id).length === 0)
+                .sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
+                    h += `<div class="card"><div class="row-edit">
+                        <img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px">
+                        <div style="flex:1"><b>${sr.name}</b><br><button class="ok" style="width:50px; margin-top:5px" onclick="tglOut('${sr.id}', 1)">1 +</button></div>
+                    </div></div>`;
+                });
+            } else {
+                db.series.filter(s => s.groupId === gid && s.status === "In Corso").sort((a,b)=>a.name.localeCompare(b.name)).forEach(sr => {
+                    const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
+                    const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
+                    const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
+                    const nextN = Math.max(maxP, (inL.length?Math.max(...inL):0)) + 1;
+                    let show = (curFumTab === "tutto") || (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) || (curFumTab === "mancanti" && gaps.length > 0);
+                    if (show) {
+                        h += `<div class="card"><b>${sr.name}</b><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px">
+                            ${gaps.map(n => `<div class=\"vol-container\"><span class=\"badge bg-danger\">MANCA</span><span class=\"volumeStatic\">${n}</span></div>`).join('')}
+                            ${inL.map(n => `<div class=\"vol-container\"><span class=\"badge bg-warn\">LISTA</span><button class=\"volumeStatic\" style=\"border:none;background:none\" onclick=\"tglOut('${sr.id}', ${n})\">${n} ✕</button></div>`).join('')}
+                            <div class=\"vol-container\"><span class=\"badge\" style=\"background:#ccc\">NEXT</span><button class=\"ok\" style=\"padding:0; height:24px\" onclick=\"tglOut('${sr.id}', ${nextN})\">${nextN} +</button></div>
+                        </div></div>`;
+                    }
+                });
+            }
+            fl.innerHTML = h || '<p style="text-align:center; color:#999; margin-top:20px">Vuoto.</p>';
+        };
 
 
 
 
-
-window.rFum = () => {
-    const gid = getActiveGroup(); 
-    let h = "";
-    
-    // 1. GESTIONE TAB "DA INIZIARE"
-    if (curFumTab === "da iniziare") {
-        // Cerchiamo le serie che hanno la parola "iniziare" nello stato (non importa maiuscole o minuscole)
-        const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
         
-        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
-                <b>SERIE DA INIZIARE:</b><br>
-                ${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie trovata.'}
-             </div>
-             <div class="card">
-                <h3>Wishlist (Appunti)</h3>
-                <input id="wiT" placeholder="Titolo">
-                <input id="wiV" type="number" placeholder="Volumi">
-                <button class="ok" onclick="addWi()">AGGIUNGI</button>
-             </div>`;
-        
-        db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
-            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center">
-                    <span><b>${w.title}</b> (${w.vols} vol)</span>
-                    <button class="danger" onclick="delWi('${w.id}')">X</button>
-                  </div>`; 
-        });
-    } 
     // 2. GESTIONE ALTRE TAB (Tutto, Da Prendere, Mancanti)
     else {
         // Mostriamo SOLO le serie "In Corso"
@@ -603,9 +622,30 @@ window.rFum = () => {
         window.dU = (id) => { if(db.users.length > 1 && confirm("Eliminare utente?")){ db.users = db.users.filter(x => x.id !== id); if(db.currentUser === id) db.currentUser = null; save(); render(); }};
 
         function backupMenu(c) { c.innerHTML = `<h2 class="section-title">BACKUP</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div><div class="card"><input type="file" id="importFile" onchange="impDB(this)" style="display:none"><button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button></div>`; }
-        window.exDB = () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = `manganest_backup.json`; a.click(); };
-        window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
 
+        window.exDB = () => { 
+            const date = new Date().toISOString().split('T')[0];
+            const fileName = `backup_mangaeden_${date}.json`;
+            const a = document.createElement('a'); 
+            a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); 
+            a.download = fileName; 
+            a.click(); 
+        };
+
+        window.impDB = (input) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    db = JSON.parse(e.target.result);
+                    save();
+                    sessionStarted = true; // Entra subito nell'app dopo l'import
+                    render();
+                    alert("Backup caricato con successo!");
+                } catch (err) { alert("Errore nel file JSON"); }
+            };
+            reader.readAsText(input.files[0]);
+        };
+        
         render();
     </script>
 </body>
