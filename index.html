@@ -53,21 +53,23 @@
     <div id="ddOverlay" onclick="closeDD()"></div>
     <div id="ddBox"><div id="ddTitle" style="font-weight:bold;margin-bottom:10px"></div><div id="ddContent"></div></div>
 
-    <script>
-let db = JSON.parse(localStorage.getItem("mangaNest2026")) || { users: [], groups: [], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
-let sessionStarted = false; 
-let adviceFilterSingle = true;
-let adviceFilterCompleteOnly = false;
-const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
-        
+
+<script>
+// 1. DICHIARAZIONE UNICA DELLE VARIABILI (NON DUPLICARE)
+        let db = JSON.parse(localStorage.getItem("mangaNest2026")) || { users: [], groups: [], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
+        let sessionStarted = false; 
+        let adviceFilterSingle = true;
+        let adviceFilterCompleteOnly = false;
+
+        const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
         const app = document.getElementById("app");
         const menu = document.getElementById("menu");
         let curTab = "DATABASE";
         let curFumTab = "tutto";
 
-
-
-     function render() {
+        // 2. FUNZIONE RENDER UNICA
+        function render() {
+            // Schermata iniziale di caricamento/accesso
             if (!sessionStarted) {
                 app.innerHTML = `
                     <div style="text-align:center; padding:50px 20px;">
@@ -80,17 +82,21 @@ const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
                 return;
             }
 
+            // Controlli database e utente
             if (!db || !db.users || db.users.length === 0) { initNew(); return; }
             if (!db.currentUser) { selectUser(); return; }
+            
             const u = db.users.find(x => x.id === db.currentUser);
             if(!u) { db.currentUser = null; selectUser(); return; }
-            
+
+            // Aggiornamento colori e testi testata
             document.documentElement.style.setProperty("--main", u.color);
             document.getElementById("who").textContent = u.name;
             document.getElementById("switchUser").style.display = "inline";
             const g = db.groups.find(x => x.id === getActiveGroup()) || {name: "???"};
             document.getElementById("groupLabel").textContent = `[${g.name}]`;
-            
+
+            // Costruzione Menu Navigazione
             menu.innerHTML = "";
             [ ["DATABASE", searchDB], ["SERIE", addSeries], ["NUMERI", addVolumes], ["LETTO", readTab], ["CONSIGLI", adviceTab], ["STATISTICHE", statsTab], ["FUMETTERIA", fumetteriaTab], ["UTENTI", usersTab], ["BACKUP", backupMenu] ].forEach(([t, f]) => {
                 const b = document.createElement("button"); 
@@ -100,6 +106,7 @@ const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
                 menu.appendChild(b);
             });
 
+            // Logica switch Tab
             if(curTab === "FUMETTERIA") fumetteriaTab(app);
             else if(curTab === "SERIE") addSeries(app);
             else if(curTab === "NUMERI") addVolumes(app);
@@ -109,8 +116,9 @@ const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
             else if(curTab === "UTENTI") usersTab(app);
             else if(curTab === "BACKUP") backupMenu(app);
             else searchDB(app);
-        }   
+        }
 
+    
 
 
         function initNew() {
