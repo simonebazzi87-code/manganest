@@ -514,45 +514,30 @@ window.rFum = () => {
     const gid = getActiveGroup(); 
     let h = "";
     
-    // 1. GESTIONE TAB "DA INIZIARE"
-if (tab === "iniziare") {
-    const noVolumesSeries = db.series.filter(s => {
-        const owned = Object.keys(db.owned || {}).filter(k => k.startsWith(s.id + "_"));
-        return owned.length === 0;
-    });
+ // 1. GESTIONE TAB "DA INIZIARE"
+    if (curFumTab === "da iniziare") {
+        // Cerchiamo le serie che hanno la parola "iniziare" nello stato (non importa maiuscole o minuscole)
+        const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
+        
+        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
+                <b>SERIE DA INIZIARE:</b><br>
+                ${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie trovata.'}
+             </div>
+             <div class="card">
+                <h3>Wishlist (Appunti)</h3>
+                <input id="wiT" placeholder="Titolo">
+                <input id="wiV" type="number" placeholder="Volumi">
+                <button class="ok" onclick="addWi()">AGGIUNGI</button>
+             </div>`;
+        
+        db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
+            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center">
+                    <span><b>${w.title}</b> (${w.vols} vol)</span>
+                    <button class="danger" onclick="delWi('${w.id}')">X</button>
+                  </div>`; 
+        });
+    } 
 
-    if (noVolumesSeries.length === 0) {
-        list.innerHTML = "<p>Nessuna serie da iniziare.</p>";
-        return;
-    }
-
-    noVolumesSeries.forEach(s => {
-        const div = document.createElement("div");
-        div.className = "shop-item";
-
-        const title = document.createElement("span");
-        title.textContent = s.title;
-
-        const vol = document.createElement("span");
-        vol.textContent = "1";
-        vol.style.cursor = "pointer";
-        vol.style.fontWeight = "bold";
-
-        vol.onclick = () => {
-            const key = s.id + "_1";
-            if (!db.outgoing) db.outgoing = {};
-            db.outgoing[key] = true;
-            saveDB();
-            render();
-        };
-
-        div.appendChild(title);
-        div.appendChild(vol);
-        list.appendChild(div);
-    });
-
-    return;
-}
     
     // 2. GESTIONE ALTRE TAB (Tutto, Da Prendere, Mancanti)
     else {
