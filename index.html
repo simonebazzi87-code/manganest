@@ -65,17 +65,17 @@
         function getActiveGroup() { return db.users.find(u => u.id === db.currentUser)?.groupId || "default"; }
 
         function render() {
+
             if (!db) {
-                app.innerHTML = `
-                    <div class="welcome-screen">
-                        <h1>Benvenuto su MangaNest</h1>
-                        <p>Scegli come iniziare:</p>
-                        <button class="ok" style="width:100%; margin-bottom:10px" onclick="initNew()">INIZIA DA ZERO</button>
-                        <input type="file" id="firstImport" style="display:none" onchange="impDB(this)">
-                        <button class="ok" style="width:100%; background:var(--dark)" onclick="document.getElementById('firstImport').click()">IMPORTA BACKUP JSON</button>
-                    </div>`;
-                return;
-            }
+    app.innerHTML = `
+        <div class="welcome-screen">
+            <h1>MangaNest</h1>
+            <input type="file" id="firstImport" style="display:none" onchange="impDB(this)">
+            <button class="ok" style="width:100%; margin-bottom:15px" onclick="document.getElementById('firstImport').click()">CARICA BACKUP (JSON)</button>
+            <button class="ok" style="width:100%; background:var(--dark)" onclick="initNew()">PROSEGUI CON DATI LOCALI</button>
+        </div>`;
+    return;
+}
 
             if (!db.currentUser) {
                 app.innerHTML = "<h3 style='text-align:center; margin-top:50px'>CHI SEI?</h3><div id='uL' style='display:flex; justify-content:center; gap:15px; flex-wrap:wrap'></div>";
