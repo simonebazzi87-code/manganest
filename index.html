@@ -603,7 +603,19 @@ window.rFum = () => {
         window.dU = (id) => { if(db.users.length > 1 && confirm("Eliminare utente?")){ db.users = db.users.filter(x => x.id !== id); if(db.currentUser === id) db.currentUser = null; save(); render(); }};
 
         function backupMenu(c) { c.innerHTML = `<h2 class="section-title">BACKUP</h2><div class="card"><button class="ok" style="width:100%" onclick="exDB()">ESPORTA JSON</button></div><div class="card"><input type="file" id="importFile" onchange="impDB(this)" style="display:none"><button class="ok" style="width:100%; background:#2d3436" onclick="document.getElementById('importFile').click()">IMPORTA JSON</button></div>`; }
-        window.exDB = () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); a.download = `manganest_backup.json`; a.click(); };
+
+window.exDB = () => { 
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+
+    const a = document.createElement('a'); 
+    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); 
+    a.download = `backup mangaeden ${yyyy}-${mm}-${dd}.json`; 
+    a.click(); 
+};
+        
         window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
 
         render();
