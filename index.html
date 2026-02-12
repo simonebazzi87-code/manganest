@@ -54,14 +54,12 @@
     <div id="ddBox"><div id="ddTitle" style="font-weight:bold;margin-bottom:10px"></div><div id="ddContent"></div></div>
 
     <script>
-       let db = JSON.parse(localStorage.getItem("mangaNest2026")) || { users: [], groups: [], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
+let db = JSON.parse(localStorage.getItem("mangaNest2026")) || { users: [], groups: [], currentUser: null, sagas: [], series: [], volumes: [], read: [], outgoing: [], wishlist: [] };
+let sessionStarted = false; 
+let adviceFilterSingle = true;
+let adviceFilterCompleteOnly = false;
+const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
         
-        // MODIFICHE RICHIESTE
-        let sessionStarted = false; 
-        let adviceFilterSingle = true;
-        let adviceFilterCompleteOnly = false;
-
-        const save = () => localStorage.setItem("mangaNest2026", JSON.stringify(db));
         const app = document.getElementById("app");
         const menu = document.getElementById("menu");
         let curTab = "DATABASE";
