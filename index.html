@@ -516,27 +516,47 @@ window.rFum = () => {
     
  // 1. GESTIONE TAB "DA INIZIARE"
     if (curFumTab === "da iniziare") {
-        // Cerchiamo le serie che hanno la parola "iniziare" nello stato (non importa maiuscole o minuscole)
-        const sDaI = db.series.filter(s => s.groupId === gid && s.status === "Da Iniziare");
-        
-        h = `<div class="card" style="background:#e3f2fd; border-left:5px solid var(--blue)">
-                <b>SERIE DA INIZIARE:</b><br>
-                ${sDaI.length ? sDaI.map(s=>`• ${s.name}`).join('<br>') : 'Nessuna serie trovata.'}
-             </div>
-             <div class="card">
-                <h3>Wishlist (Appunti)</h3>
-                <input id="wiT" placeholder="Titolo">
-                <input id="wiV" type="number" placeholder="Volumi">
-                <button class="ok" onclick="addWi()">AGGIUNGI</button>
-             </div>`;
-        
-        db.wishlist.filter(w => w.groupId === gid).forEach(w => { 
-            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center">
-                    <span><b>${w.title}</b> (${w.vols} vol)</span>
-                    <button class="danger" onclick="delWi('${w.id}')">X</button>
-                  </div>`; 
+
+    // Serie con ZERO volumi registrati
+    const serieZeroVolumi = db.series.filter(s => {
+        if (s.groupId !== gid) return false;
+        const volCount = db.volumes.filter(v => v.seriesId === s.id).length;
+        return volCount === 0;
+    }).sort((a,b)=>a.name.localeCompare(b.name));
+
+    if (serieZeroVolumi.length === 0) {
+        h = `<p style="text-align:center; color:#999; margin-top:20px">Nessuna serie da iniziare.</p>`;
+    } else {
+
+        serieZeroVolumi.forEach(sr => {
+
+            const giaInLista = db.outgoing.some(o => o.seriesId === sr.id && o.number === 1);
+
+            h += `
+                <div class="card">
+                    <div class="row-edit">
+                        <img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px">
+                        <div style="flex:1">
+                            <b>${sr.name}</b>
+                            <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
+
+                                <div class="vol-container">
+                                    <span class="badge bg-warn">${giaInLista ? 'DA PRENDERE' : 'PRIMO NUMERO'}</span>
+                                    <button class="volumeStatic"
+                                        style="border:1.5px solid var(--warn); cursor:pointer"
+                                        onclick="tglOut('${sr.id}', 1)">
+                                        1 ${giaInLista ? '✕' : '+'}
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
-    } 
+    }
+}
 
     
     // 2. GESTIONE ALTRE TAB (Tutto, Da Prendere, Mancanti)
