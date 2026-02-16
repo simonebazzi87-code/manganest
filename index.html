@@ -111,10 +111,21 @@
         document.getElementById("switchUser").onclick = () => { db.currentUser = null; save(); render(); };
 
         // --- FUNZIONI DATABASE (RICERCA AUTORE/EDITORE) ---
-        function searchDB(c) { 
-            c.innerHTML = `<h2 class="section-title">DATABASE</h2><div class="card"><input type="text" id="dbS" placeholder="Cerca Saga, Serie, Autore o Editore..." oninput="doS()"></div><div id="sRes"></div>`; 
-            doS(); 
-        }
+  function searchDB(c) { 
+    c.innerHTML = `<h2 class="section-title">DATABASE</h2>
+    <div class="card">
+        <input type="text" id="dbS" placeholder="Cerca Saga, Serie, Autore o Editore..." oninput="doS()">
+
+        <div style="margin-top:10px; font-size:13px">
+            <input type="checkbox" id="fInCorso" onchange="doS()"> In Corso
+            <input type="checkbox" id="fTerminata" onchange="doS()" style="margin-left:10px"> Terminata
+            <input type="checkbox" id="fSospesa" onchange="doS()" style="margin-left:10px"> Sospesa
+            <input type="checkbox" id="fDaIniziare" onchange="doS()" style="margin-left:10px"> Da Iniziare
+        </div>
+    </div>
+    <div id="sRes"></div>`; 
+    doS(); 
+}
 
         window.doS = () => {
             const q = (document.getElementById("dbS")?.value || "").toLowerCase();
@@ -123,12 +134,36 @@
             let h = "";
             
             db.sagas.filter(s => s.groupId === gid).sort((a,b)=>a.name.localeCompare(b.name)).forEach(sg => {
-                const srs = db.series.filter(r => r.sagaId === sg.id && (
-                    sg.name.toLowerCase().includes(q) || 
-                    r.name.toLowerCase().includes(q) || 
-                    (r.authors||"").toLowerCase().includes(q) || 
-                    (r.publisher||"").toLowerCase().includes(q)
-                ));
+          const fInCorso = document.getElementById("fInCorso")?.checked;
+const fTerminata = document.getElementById("fTerminata")?.checked;
+const fSospesa = document.getElementById("fSospesa")?.checked;
+const fDaIniziare = document.getElementById("fDaIniziare")?.checked;
+const anyFilter = fInCorso || fTerminata || fSospesa || fDaIniziare;
+
+const srs = db.series.filter(r => {
+
+    if (r.sagaId !== sg.id) return false;
+
+    const textMatch =
+        sg.name.toLowerCase().includes(q) ||
+        r.name.toLowerCase().includes(q) ||
+        (r.authors||"").toLowerCase().includes(q) ||
+        (r.publisher||"").toLowerCase().includes(q);
+
+    if (!textMatch) return false;
+
+    const vols = db.volumes.filter(v => v.seriesId === r.id);
+    const isDaIniziare = vols.length === 0;
+
+    if (!anyFilter) return true;
+
+    if (fDaIniziare && isDaIniziare) return true;
+    if (fInCorso && r.status === "In Corso") return true;
+    if (fTerminata && r.status === "Terminata") return true;
+    if (fSospesa && r.status === "Sospesa") return true;
+
+    return false;
+});
                 
                 if (srs.length > 0) {
                     h += `<div class="card"><h3 style="color:var(--main); border-bottom:1px solid #eee; margin-top:0">${sg.name}</h3>`;
@@ -571,7 +606,6 @@ window.rFum = () => {
  // 1. GESTIONE TAB "DA INIZIARE"
     if (curFumTab === "da iniziare") {
 
-    // Serie con ZERO volumi registrati
     const serieZeroVolumi = db.series.filter(s => {
         if (s.groupId !== gid) return false;
         const volCount = db.volumes.filter(v => v.seriesId === s.id).length;
@@ -584,22 +618,40 @@ window.rFum = () => {
 
         serieZeroVolumi.forEach(sr => {
 
-            const giaInLista = db.outgoing.some(o => o.seriesId === sr.id && o.number === 1);
+            const outgoing = db.outgoing
+                .filter(o => o.seriesId === sr.id)
+                .map(o => o.number)
+                .sort((a,b)=>a-b);
+
+            const nextNum = outgoing.length > 0
+                ? Math.max(...outgoing) + 1
+                : 1;
 
             h += `
                 <div class="card">
                     <div class="row-edit">
-                        <img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px">
+                        <img src="${sr.img}" class="cover-big">
                         <div style="flex:1">
                             <b>${sr.name}</b>
                             <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
 
+                                ${outgoing.map(n => `
+                                    <div class="vol-container">
+                                        <span class="badge bg-warn">DA PRENDERE</span>
+                                        <button class="volumeStatic"
+                                            style="border:1.5px solid var(--warn)"
+                                            onclick="tglOut('${sr.id}', ${n})">
+                                            ${n} ✕
+                                        </button>
+                                    </div>
+                                `).join('')}
+
                                 <div class="vol-container">
-                                    <span class="badge bg-warn">${giaInLista ? 'DA PRENDERE' : 'PRIMO NUMERO'}</span>
-                                    <button class="volumeStatic"
-                                        style="border:1.5px solid var(--warn); cursor:pointer"
-                                        onclick="tglOut('${sr.id}', 1)">
-                                        1 ${giaInLista ? '✕' : '+'}
+                                    <span class="badge bg-blue">NEXT</span>
+                                    <button class="ok"
+                                        style="width:100%; height:32px; padding:0"
+                                        onclick="tglOut('${sr.id}', ${nextNum})">
+                                        ${nextNum} +
                                     </button>
                                 </div>
 
@@ -634,7 +686,7 @@ window.rFum = () => {
             if (show) { 
                 h += `<div class="card">
                         <div class="row-edit">
-                            <img src="${sr.img}" style="width:60px; height:60px; object-fit:cover; border-radius:4px">
+                            <img src="${sr.img}" class="cover-big">
                             <div style="flex:1">
                                 <b>${sr.name}</b>
                                 <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
