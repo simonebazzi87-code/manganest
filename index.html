@@ -378,38 +378,102 @@
                         <option value="NEW_OTH">Non hai iniziato, ma altri sì</option>
                         <option value="NONE">Nessuno ha iniziato</option>
                     </select>
-                    <div style="margin-top:10px; font-size:13px">
-                        <input type="checkbox" id="exOne" onchange="rAd()"> Escludi serie con solo 1 volume letto
-                    </div>
+                   <div style="margin-top:10px; font-size:13px">
+    <div>
+        <input type="checkbox" id="exOne" onchange="rAd()"> Escludi serie con solo 1 volume letto
+    </div>
+    <div style="margin-top:5px">
+        <input type="checkbox" id="onlyTerm" onchange="rAd()"> Mostra solo serie complete (Terminata)
+    </div>
+</div>
                 </div>
                 <div id="adRes"></div>`;
             rAd();
         }
 
-        window.rAd = () => {
-            const gid = getActiveGroup(), uid = db.currentUser, f = document.getElementById("adF").value;
-            const exOne = document.getElementById("exOne").checked;
-            const otherUsers = db.users.filter(u => u.id !== uid && u.groupId === gid);
-            let list = [];
-            
-            db.series.filter(s => s.groupId === gid).forEach(s => {
-                const vids = db.volumes.filter(v => v.seriesId === s.id).map(v => v.id);
-                if (vids.length === 0) return;
-                const myRead = db.read.filter(r => r.userId === uid && vids.includes(r.volId)).length;
-                if (exOne && myRead === 1) return; 
+      window.rAd = () => {
+    const gid = getActiveGroup();
+    const uid = db.currentUser;
+    const f = document.getElementById("adF").value;
+    const exOne = document.getElementById("exOne").checked;
+    const onlyTerm = document.getElementById("onlyTerm").checked;
 
-                const p = Math.round((myRead / vids.length) * 100);
-                let show = false;
-                if (f === "CONT" && myRead > 0 && myRead < vids.length) show = true;
-                if (f === "OTH" || f === "NEW_OTH") {
-                    const maxOth = Math.max(...otherUsers.map(u => db.read.filter(rd => rd.userId === u.id && vids.includes(rd.volId)).length), 0);
-                    if (f === "OTH" && myRead > 0 && maxOth > myRead) show = true;
-                    if (f === "NEW_OTH" && myRead === 0 && maxOth > 0) show = true;
-                }
-                if (f === "NONE" && myRead === 0 && !db.read.some(rd => vids.includes(rd.volId))) show = true;
-                
-                if (show) list.push({ ...s, perc: p });
-            });
+    const otherUsers = db.users.filter(u => u.id !== uid && u.groupId === gid);
+
+    let list = [];
+
+    db.series
+        .filter(s => s.groupId === gid)
+        .forEach(s => {
+
+            if (onlyTerm && s.status !== "Terminata") return;
+
+            const vols = db.volumes.filter(v => v.seriesId === s.id);
+            if (vols.length === 0) return;
+
+            const vids = vols.map(v => v.id);
+
+            const myRead = db.read.filter(r => r.userId === uid && vids.includes(r.volId)).length;
+
+            if (exOne && myRead === 1) return;
+
+            const total = vids.length;
+            const mancanti = total - myRead;
+            const perc = Math.round((myRead / total) * 100);
+
+            let show = false;
+
+            if (f === "CONT" && myRead > 0 && myRead < total) show = true;
+
+            if (f === "OTH" || f === "NEW_OTH") {
+                const maxOth = Math.max(
+                    ...otherUsers.map(u =>
+                        db.read.filter(rd => rd.userId === u.id && vids.includes(rd.volId)).length
+                    ),
+                    0
+                );
+
+                if (f === "OTH" && myRead > 0 && maxOth > myRead) show = true;
+                if (f === "NEW_OTH" && myRead === 0 && maxOth > 0) show = true;
+            }
+
+            if (f === "NONE" && myRead === 0 && !db.read.some(rd => vids.includes(rd.volId))) show = true;
+
+            if (show) {
+                list.push({
+                    ...s,
+                    perc: perc,
+                    mancanti: mancanti
+                });
+            }
+        });
+
+    // 🔥 ORDINAMENTO NUOVO
+    // Prima meno volumi mancanti
+    // Poi percentuale più alta
+    // Poi alfabetico
+
+    list.sort((a, b) =>
+        a.mancanti - b.mancanti ||
+        b.perc - a.perc ||
+        a.name.localeCompare(b.name)
+    );
+
+    document.getElementById("adRes").innerHTML = `
+        <div class="advice-grid">
+            ${list.map(s => `
+                <div class="advice-card">
+                    <img src="${s.img}">
+                    <b>${s.name}</b><br>
+                    <span class="badge bg-success">${s.perc}% completato</span><br>
+                    <span style="font-size:11px; color:#555">
+                        ${s.mancanti} volumi mancanti
+                    </span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+};
 
             // Ordine: % Decrescente, poi Alfabetico
             list.sort((a, b) => b.perc - a.perc || a.name.localeCompare(b.name));
