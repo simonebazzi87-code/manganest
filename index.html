@@ -74,6 +74,7 @@
     app.innerHTML = `
         <div class="welcome-screen">
             <h1>MangaNest</h1>
+            <div id="app"></div>
             <input type="file" id="firstImport" style="display:none" onchange="impDB(this)">
             <button class="ok" style="width:100%; margin-bottom:15px" onclick="document.getElementById('firstImport').click()">CARICA BACKUP (JSON)</button>
             <button class="ok" style="width:100%; background:var(--dark)" onclick="initNew()">PROSEGUI CON DATI LOCALI</button>
@@ -746,19 +747,14 @@ window.exDB = () => {
         window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
 // --- LOGICA DI AVVIO (IL PEZZO MANCANTE) ---
 window.onload = () => {
-    // Se non c'è un utente selezionato, mostra la gestione utenti
     if (!db.currentUser) {
         usersTab(app);
     } else {
-        // Altrimenti renderizza la dashboard
         render();
     }
 };
 
-// Inizializza l'app al caricamento
 
-        render();
-    </script>
 </body>
 </html>
 
