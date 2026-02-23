@@ -771,6 +771,18 @@ window.exDB = () => {
 };
         
         window.impDB = (i) => { const r = new FileReader(); r.onload = (e) => { try { db = JSON.parse(e.target.result); save(); location.reload(); } catch(err) { alert("Errore file!"); }}; r.readAsText(i.files[0]); };
+// --- LOGICA DI AVVIO (IL PEZZO MANCANTE) ---
+window.onload = () => {
+    // Se non c'è un utente selezionato, mostra la gestione utenti
+    if (!db.currentUser) {
+        usersTab(app);
+    } else {
+        // Altrimenti renderizza la dashboard
+        render();
+    }
+};
+
+// Inizializza l'app al caricamento
 
         render();
     </script>
