@@ -555,16 +555,19 @@ if (show) {
         // --- STATISTICHE (ORDINE E PERCENTUALI) ---
 
         function statsTab(c) {
-   const gid = getActiveGroup();
+const gid = getActiveGroup();
 
-const gSeries = db.series.filter(s =>
-    s.groupId === gid && s.status !== "Da Iniziare"
+const allGroupSeries = db.series.filter(s => s.groupId === gid);
+const allGroupVols = db.volumes.filter(v => v.groupId === gid);
+
+const gSeries = allGroupSeries.filter(s =>
+    allGroupVols.some(v => v.seriesId === s.id)
 );
 
 const gSeriesIds = gSeries.map(s => s.id);
 
-const gVols = db.volumes.filter(v =>
-    v.groupId === gid && gSeriesIds.includes(v.seriesId)
+const gVols = allGroupVols.filter(v =>
+    gSeriesIds.includes(v.seriesId)
 );
 
 const gSagas = db.sagas
