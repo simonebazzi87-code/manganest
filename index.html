@@ -408,12 +408,13 @@ const srs = db.series.filter(r => {
     c.innerHTML = `<h2 class="section-title">CONSIGLI</h2>
         <div class="card">
             <select id="adF" onchange="rAd()">
-                <option value="ALL">Tutte le serie</option>
-                <option value="CONT">Continua a leggere</option>
-                <option value="OTH">Gli altri sono più avanti di te</option>
-                <option value="NEW_OTH">Non hai iniziato, ma altri sì</option>
-                <option value="NONE">Nessuno ha iniziato</option>
-            </select>
+    <option value="ALL">Tutte le serie</option>
+    <option value="CONT">Continua a leggere</option>
+    <option value="SAGA_START">Serie di saghe che hai già iniziato</option>
+    <option value="OTH">Gli altri sono più avanti di te</option>
+    <option value="NEW_OTH">Non hai iniziato, ma altri sì</option>
+    <option value="NONE">Nessuno ha iniziato</option>
+</select>
 
           <div style="margin-top:10px; font-size:13px">
     <div>
@@ -474,6 +475,26 @@ let show = false;
 if (f === "ALL" && myRead < total) show = true;
 
 if (f === "CONT" && myRead > 0 && myRead < total) show = true;
+
+if (f === "SAGA_START") {
+    const sameSagaSeries = db.series.filter(sr =>
+        sr.groupId === gid &&
+        sr.sagaId === s.sagaId &&
+        sr.id !== s.id
+    );
+
+    const startedAnotherSeriesInSaga = sameSagaSeries.some(sr => {
+        const otherVolIds = db.volumes
+            .filter(v => v.seriesId === sr.id)
+            .map(v => v.id);
+
+        return db.read.some(r =>
+            r.userId === uid && otherVolIds.includes(r.volId)
+        );
+    });
+
+    if (myRead === 0 && startedAnotherSeriesInSaga) show = true;
+}
 
 if (f === "OTH" || f === "NEW_OTH") {
     const maxOth = Math.max(
