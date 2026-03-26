@@ -553,68 +553,215 @@ if (show) {
           
 
         // --- STATISTICHE (ORDINE E PERCENTUALI) ---
+
         function statsTab(c) {
-            const gid = getActiveGroup();
-            const gSagas = db.sagas.filter(s => s.groupId === gid);
-            const gSeries = db.series.filter(s => s.groupId === gid);
-            const gVols = db.volumes.filter(v => v.groupId === gid);
-            
-            let h = `<h2 class="section-title">GENERALI</h2>
-                     <div class="card">Saghe: <b>${gSagas.length}</b> | Serie: <b>${gSeries.length}</b> | Volumi: <b>${gVols.length}</b></div>
-                     <h2 class="section-title">PERSONALI</h2>`;
+    const gid = getActiveGroup();
+    const gSagas = db.sagas.filter(s => s.groupId === gid).sort((a,b) => a.name.localeCompare(b.name));
+    const gSeries = db.series.filter(s => s.groupId === gid);
+    const gVols = db.volumes.filter(v => v.groupId === gid);
+    const gUsers = db.users.filter(u => u.groupId === gid);
 
-            db.users.filter(u => u.groupId === gid).forEach(u => {
-                const vRead = db.read.filter(r => r.userId === u.id && gVols.some(v => v.id === r.volId)).length;
-                const sCompl = gSeries.filter(sr => {
-                    const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
-                    return vids.length > 0 && vids.every(id => db.read.some(r => r.userId === u.id && r.volId === id));
-                }).length;
-                const sgCompl = gSagas.filter(sg => {
-                    const srs = gSeries.filter(sr => sr.sagaId === sg.id);
-                    return srs.length > 0 && srs.every(sr => {
-                        const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
-                        return vids.length > 0 && vids.every(id => db.read.some(r => r.userId === u.id && r.volId === id));
-                    });
-                }).length;
+    // ===== STATISTICHE EDITORI =====
+    const publisherSeriesMap = {};
+    const publisherVolumesMap = {};
 
-                const keys = ["0%", "1-25%", "25-50%", "50-75%", "75-99%", "100%"];
-                const dataU = { series: {}, sagas: {} }; 
-                keys.forEach(k => { dataU.series[k] = []; dataU.sagas[k] = []; });
-                
-                gSeries.forEach(sr => {
-                    const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
-                    const p = vids.length ? (db.read.filter(r => r.userId === u.id && vids.includes(r.volId)).length / vids.length) * 100 : 0;
-                    let k = "0%"; if (p >= 100) k = "100%"; else if (p >= 75) k = "75-99%"; else if (p >= 50) k = "50-75%"; else if (p >= 25) k = "25-50%"; else if (p > 0) k = "1-25%";
-                    dataU.series[k].push(sr);
-                });
-                
-                const uidClean = u.id.replace(/\W/g, '');
-                statsData.series[uidClean] = dataU.series;
+    gSeries.forEach(sr => {
+        const pub = (sr.publisher || "Sconosciuto").trim() || "Sconosciuto";
+        if (!publisherSeriesMap[pub]) publisherSeriesMap[pub] = 0;
+        publisherSeriesMap[pub]++;
 
-                const pSg = Math.round((sgCompl / (gSagas.length || 1)) * 100);
-                const pSr = Math.round((sCompl / (gSeries.length || 1)) * 100);
-                const pVo = Math.round((vRead / (gVols.length || 1)) * 100);
+        const volCount = db.volumes.filter(v => v.seriesId === sr.id).length;
+        if (!publisherVolumesMap[pub]) publisherVolumesMap[pub] = 0;
+        publisherVolumesMap[pub] += volCount;
+    });
 
-                h += `<div class="card" style="border-left:5px solid ${u.color}">
-                    <h3 style="margin-top:0">${u.name}</h3>
-                    
-                    <small>Saghe Completate: ${sgCompl}/${gSagas.length}</small>
-                    <div class="progress-container"><div class="progress-text">${pSg}%</div><div class="progress-fill" style="width:${pSg}%; background:${u.color}; opacity:0.6"></div></div>
-                    
-                    <small>Serie Completate: ${sCompl}/${gSeries.length}</small>
-                    <div class="progress-container"><div class="progress-text">${pSr}%</div><div class="progress-fill" style="width:${pSr}%; background:${u.color}"></div></div>
-                    
-                    <small>Volumi Letti: ${vRead}/${gVols.length}</small>
-                    <div class="progress-container"><div class="progress-text">${pVo}%</div><div class="progress-fill" style="width:${pVo}%; background:${u.color}; opacity:0.8"></div></div>
-                    
-                    <div style="margin-top:15px"><b>Dettaglio Serie:</b></div>
-                    <div style="display:flex; gap:3px; margin-top:5px">
-                        ${keys.map(k => `<button class="pill" style="flex:1; font-size:9px; padding:5px" onclick="openDD('${uidClean}','${k}','${u.name}')">${k}<br>${dataU.series[k].length}</button>`).join('')}
-                    </div>
-                </div>`;
+    const publisherSeriesRows = Object.entries(publisherSeriesMap)
+        .sort((a,b) => a[0].localeCompare(b[0]))
+        .map(([pub, count]) => {
+            const perc = Math.round((count / (gSeries.length || 1)) * 100);
+            return `<tr>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee">${pub}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${count}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${perc}%</td>
+            </tr>`;
+        }).join('');
+
+    const publisherVolumeRows = Object.entries(publisherVolumesMap)
+        .sort((a,b) => a[0].localeCompare(b[0]))
+        .map(([pub, count]) => {
+            const perc = Math.round((count / (gVols.length || 1)) * 100);
+            return `<tr>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee">${pub}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${count}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${perc}%</td>
+            </tr>`;
+        }).join('');
+
+    let h = `
+        <h2 class="section-title">GENERALI</h2>
+        <div class="card">
+            Saghe: <b>${gSagas.length}</b> | Serie: <b>${gSeries.length}</b> | Volumi: <b>${gVols.length}</b>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0">Serie per casa editrice</h3>
+            <div style="overflow-x:auto">
+                <table style="width:100%; border-collapse:collapse; font-size:13px">
+                    <thead>
+                        <tr style="background:#f5f5f5">
+                            <th style="padding:8px; text-align:left">Casa editrice</th>
+                            <th style="padding:8px; text-align:center">Serie</th>
+                            <th style="padding:8px; text-align:center">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${publisherSeriesRows || `<tr><td colspan="3" style="padding:8px; text-align:center">Nessun dato</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0">Volumi per casa editrice</h3>
+            <div style="overflow-x:auto">
+                <table style="width:100%; border-collapse:collapse; font-size:13px">
+                    <thead>
+                        <tr style="background:#f5f5f5">
+                            <th style="padding:8px; text-align:left">Casa editrice</th>
+                            <th style="padding:8px; text-align:center">Volumi</th>
+                            <th style="padding:8px; text-align:center">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${publisherVolumeRows || `<tr><td colspan="3" style="padding:8px; text-align:center">Nessun dato</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h2 class="section-title">PERSONALI</h2>
+    `;
+
+    // ===== BLOCCO UTENTI (UGUALE ALLA LOGICA CHE HAI ORA) =====
+    gUsers.forEach(u => {
+        const vRead = db.read.filter(r => r.userId === u.id && gVols.some(v => v.id === r.volId)).length;
+        const sCompl = gSeries.filter(sr => {
+            const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
+            return vids.length > 0 && vids.every(id => db.read.some(r => r.userId === u.id && r.volId === id));
+        }).length;
+        const sgCompl = gSagas.filter(sg => {
+            const srs = gSeries.filter(sr => sr.sagaId === sg.id);
+            return srs.length > 0 && srs.every(sr => {
+                const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
+                return vids.length > 0 && vids.every(id => db.read.some(r => r.userId === u.id && r.volId === id));
             });
-            c.innerHTML = h;
-        }
+        }).length;
+
+        const keys = ["0%", "1-25%", "25-50%", "50-75%", "75-99%", "100%"];
+        const dataU = { series: {}, sagas: {} };
+        keys.forEach(k => { dataU.series[k] = []; dataU.sagas[k] = []; });
+
+        gSeries.forEach(sr => {
+            const vids = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.id);
+            const p = vids.length ? (db.read.filter(r => r.userId === u.id && vids.includes(r.volId)).length / vids.length) * 100 : 0;
+            let k = "0%";
+            if (p >= 100) k = "100%";
+            else if (p >= 75) k = "75-99%";
+            else if (p >= 50) k = "50-75%";
+            else if (p >= 25) k = "25-50%";
+            else if (p > 0) k = "1-25%";
+            dataU.series[k].push(sr);
+        });
+
+        const uidClean = u.id.replace(/\W/g, '');
+        statsData.series[uidClean] = dataU.series;
+
+        const pSg = Math.round((sgCompl / (gSagas.length || 1)) * 100);
+        const pSr = Math.round((sCompl / (gSeries.length || 1)) * 100);
+        const pVo = Math.round((vRead / (gVols.length || 1)) * 100);
+
+        h += `<div class="card" style="border-left:5px solid ${u.color}">
+            <h3 style="margin-top:0">${u.name}</h3>
+
+            <small>Saghe Completate: ${sgCompl}/${gSagas.length}</small>
+            <div class="progress-container"><div class="progress-text">${pSg}%</div><div class="progress-fill" style="width:${pSg}%; background:${u.color}; opacity:0.6"></div></div>
+
+            <small>Serie Completate: ${sCompl}/${gSeries.length}</small>
+            <div class="progress-container"><div class="progress-text">${pSr}%</div><div class="progress-fill" style="width:${pSr}%; background:${u.color}"></div></div>
+
+            <small>Volumi Letti: ${vRead}/${gVols.length}</small>
+            <div class="progress-container"><div class="progress-text">${pVo}%</div><div class="progress-fill" style="width:${pVo}%; background:${u.color}; opacity:0.8"></div></div>
+
+            <div style="margin-top:15px"><b>Dettaglio Serie:</b></div>
+            <div style="display:flex; gap:3px; margin-top:5px">
+                ${keys.map(k => `<button class="pill" style="flex:1; font-size:9px; padding:5px" onclick="openDD('${uidClean}','${k}','${u.name}')">${k}<br>${dataU.series[k].length}</button>`).join('')}
+            </div>
+        </div>`;
+    });
+
+    // ===== TABELLA SAGHE X UTENTI =====
+    function getSagaCellStyle(perc) {
+        if (perc >= 100) return "background:#27ae60; color:white;";
+        if (perc >= 75) return "background:#2ecc71; color:white;";
+        if (perc >= 50) return "background:#f1c40f; color:#333;";
+        if (perc >= 25) return "background:#f39c12; color:white;";
+        if (perc > 0) return "background:#e67e22; color:white;";
+        return "background:#e0e0e0; color:#333;";
+    }
+
+    const sagaTableRows = gSagas.map(sg => {
+        let row = `<tr>
+            <td style="padding:8px; border-bottom:1px solid #eee; font-weight:bold; white-space:nowrap">${sg.name}</td>`;
+
+        gUsers.forEach(u => {
+            const sagaSeries = gSeries.filter(sr => sr.sagaId === sg.id);
+            const sagaVols = db.volumes.filter(v => sagaSeries.some(sr => sr.id === v.seriesId));
+            const sagaVolIds = sagaVols.map(v => v.id);
+
+            const readCount = db.read.filter(r => r.userId === u.id && sagaVolIds.includes(r.volId)).length;
+            const totalCount = sagaVolIds.length;
+            const perc = totalCount ? Math.round((readCount / totalCount) * 100) : 0;
+
+            row += `<td style="padding:8px; border-bottom:1px solid #eee; text-align:center; font-weight:bold; ${getSagaCellStyle(perc)}">
+                ${perc}%
+            </td>`;
+        });
+
+        row += `</tr>`;
+        return row;
+    }).join('');
+
+    h += `
+        <h2 class="section-title">COMPLETAMENTO SAGHE</h2>
+        <div class="card">
+            <div style="overflow-x:auto">
+                <table style="width:100%; border-collapse:collapse; font-size:13px">
+                    <thead>
+                        <tr style="background:#f5f5f5">
+                            <th style="padding:8px; text-align:left">Saga</th>
+                            ${gUsers.map(u => `<th style="padding:8px; text-align:center; min-width:80px">${u.name}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sagaTableRows || `<tr><td colspan="${gUsers.length + 1}" style="padding:8px; text-align:center">Nessuna saga</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:12px; font-size:12px; color:#666">
+                <b>Legenda:</b>
+                <span style="display:inline-block; margin-left:8px; padding:2px 6px; background:#e0e0e0; border-radius:4px">0%</span>
+                <span style="display:inline-block; margin-left:4px; padding:2px 6px; background:#e67e22; color:white; border-radius:4px">1-24%</span>
+                <span style="display:inline-block; margin-left:4px; padding:2px 6px; background:#f39c12; color:white; border-radius:4px">25-49%</span>
+                <span style="display:inline-block; margin-left:4px; padding:2px 6px; background:#f1c40f; color:#333; border-radius:4px">50-74%</span>
+                <span style="display:inline-block; margin-left:4px; padding:2px 6px; background:#2ecc71; color:white; border-radius:4px">75-99%</span>
+                <span style="display:inline-block; margin-left:4px; padding:2px 6px; background:#27ae60; color:white; border-radius:4px">100%</span>
+            </div>
+        </div>
+    `;
+
+    c.innerHTML = h;
+}
 
         window.openDD = (uid, k, name) => {
             const list = statsData.series[uid][k];
