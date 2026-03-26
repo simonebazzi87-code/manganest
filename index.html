@@ -459,7 +459,7 @@ const srs = db.series.filter(r => {
 
            let show = false;
 
-if (f === "ALL") show = true;
+if (f === "ALL" && myRead < total) show = true;
 
 if (f === "CONT" && myRead > 0 && myRead < total) show = true;
 
