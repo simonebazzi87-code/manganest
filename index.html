@@ -562,38 +562,58 @@ if (show) {
     const gUsers = db.users.filter(u => u.groupId === gid);
 
     // ===== STATISTICHE EDITORI =====
+       // ===== STATISTICHE EDITORI =====
     const publisherSeriesMap = {};
     const publisherVolumesMap = {};
 
+    function normalizePublisherName(name) {
+        const cleaned = (name || "").trim().replace(/\s+/g, " ").toLowerCase();
+        return cleaned || "sconosciuto";
+    }
+
+    function displayPublisherName(normalized) {
+        if (normalized === "sconosciuto") return "Sconosciuto";
+        return normalized.replace(/\b\w/g, l => l.toUpperCase());
+    }
+
     gSeries.forEach(sr => {
-        const pub = (sr.publisher || "Sconosciuto").trim() || "Sconosciuto";
-        if (!publisherSeriesMap[pub]) publisherSeriesMap[pub] = 0;
-        publisherSeriesMap[pub]++;
+        const pubKey = normalizePublisherName(sr.publisher);
+
+        if (!publisherSeriesMap[pubKey]) publisherSeriesMap[pubKey] = 0;
+        publisherSeriesMap[pubKey]++;
 
         const volCount = db.volumes.filter(v => v.seriesId === sr.id).length;
-        if (!publisherVolumesMap[pub]) publisherVolumesMap[pub] = 0;
-        publisherVolumesMap[pub] += volCount;
+        if (!publisherVolumesMap[pubKey]) publisherVolumesMap[pubKey] = 0;
+        publisherVolumesMap[pubKey] += volCount;
     });
 
     const publisherSeriesRows = Object.entries(publisherSeriesMap)
-        .sort((a,b) => a[0].localeCompare(b[0]))
-        .map(([pub, count]) => {
-            const perc = Math.round((count / (gSeries.length || 1)) * 100);
+        .map(([pubKey, count]) => ({
+            pub: displayPublisherName(pubKey),
+            count: count,
+            perc: Math.round((count / (gSeries.length || 1)) * 100)
+        }))
+        .sort((a, b) => b.perc - a.perc || b.count - a.count || a.pub.localeCompare(b.pub))
+        .map(row => {
             return `<tr>
-                <td style="padding:6px 8px; border-bottom:1px solid #eee">${pub}</td>
-                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${count}</td>
-                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${perc}%</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee">${row.pub}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${row.count}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${row.perc}%</td>
             </tr>`;
         }).join('');
 
     const publisherVolumeRows = Object.entries(publisherVolumesMap)
-        .sort((a,b) => a[0].localeCompare(b[0]))
-        .map(([pub, count]) => {
-            const perc = Math.round((count / (gVols.length || 1)) * 100);
+        .map(([pubKey, count]) => ({
+            pub: displayPublisherName(pubKey),
+            count: count,
+            perc: Math.round((count / (gVols.length || 1)) * 100)
+        }))
+        .sort((a, b) => b.perc - a.perc || b.count - a.count || a.pub.localeCompare(b.pub))
+        .map(row => {
             return `<tr>
-                <td style="padding:6px 8px; border-bottom:1px solid #eee">${pub}</td>
-                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${count}</td>
-                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${perc}%</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee">${row.pub}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${row.count}</td>
+                <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:center">${row.perc}%</td>
             </tr>`;
         }).join('');
 
@@ -603,39 +623,41 @@ if (show) {
             Saghe: <b>${gSagas.length}</b> | Serie: <b>${gSeries.length}</b> | Volumi: <b>${gVols.length}</b>
         </div>
 
-        <div class="card">
-            <h3 style="margin-top:0">Serie per casa editrice</h3>
-            <div style="overflow-x:auto">
-                <table style="width:100%; border-collapse:collapse; font-size:13px">
-                    <thead>
-                        <tr style="background:#f5f5f5">
-                            <th style="padding:8px; text-align:left">Casa editrice</th>
-                            <th style="padding:8px; text-align:center">Serie</th>
-                            <th style="padding:8px; text-align:center">%</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${publisherSeriesRows || `<tr><td colspan="3" style="padding:8px; text-align:center">Nessun dato</td></tr>`}
-                    </tbody>
-                </table>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px; margin-bottom:12px">
+            <div class="card" style="margin-bottom:0">
+                <h3 style="margin-top:0">Serie per casa editrice</h3>
+                <div style="overflow-x:auto">
+                    <table style="width:100%; border-collapse:collapse; font-size:13px">
+                        <thead>
+                            <tr style="background:#f5f5f5">
+                                <th style="padding:8px; text-align:left">Casa editrice</th>
+                                <th style="padding:8px; text-align:center">Serie</th>
+                                <th style="padding:8px; text-align:center">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${publisherSeriesRows || `<tr><td colspan="3" style="padding:8px; text-align:center">Nessun dato</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
-        <div class="card">
-            <h3 style="margin-top:0">Volumi per casa editrice</h3>
-            <div style="overflow-x:auto">
-                <table style="width:100%; border-collapse:collapse; font-size:13px">
-                    <thead>
-                        <tr style="background:#f5f5f5">
-                            <th style="padding:8px; text-align:left">Casa editrice</th>
-                            <th style="padding:8px; text-align:center">Volumi</th>
-                            <th style="padding:8px; text-align:center">%</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${publisherVolumeRows || `<tr><td colspan="3" style="padding:8px; text-align:center">Nessun dato</td></tr>`}
-                    </tbody>
-                </table>
+            <div class="card" style="margin-bottom:0">
+                <h3 style="margin-top:0">Volumi per casa editrice</h3>
+                <div style="overflow-x:auto">
+                    <table style="width:100%; border-collapse:collapse; font-size:13px">
+                        <thead>
+                            <tr style="background:#f5f5f5">
+                                <th style="padding:8px; text-align:left">Casa editrice</th>
+                                <th style="padding:8px; text-align:center">Volumi</th>
+                                <th style="padding:8px; text-align:center">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${publisherVolumeRows || `<tr><td colspan="3" style="padding:8px; text-align:center">Nessun dato</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
