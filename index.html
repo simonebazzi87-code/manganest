@@ -712,17 +712,28 @@ window.rFum = () => {
         db.series.filter(s => s.groupId === gid && s.status === "In Corso")
         .sort((a,b)=>a.name.localeCompare(b.name))
         .forEach(sr => {
-            const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number), maxP = vs.length ? Math.max(...vs) : 0;
-            const gaps = []; for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
-            const inL = db.outgoing.filter(o => o.seriesId === sr.id).map(o => o.number).sort((a,b)=>a-b);
-            
-            const maxL = inL.length ? Math.max(...inL) : 0;
-            const nextN = Math.max(maxP, maxL) + 1;
 
-            let show = false;
-            if (curFumTab === "tutto") show = true;
-            if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
-            if (curFumTab === "mancanti" && gaps.length > 0) show = true;
+const vs = db.volumes.filter(v => v.seriesId === sr.id).map(v => v.number);
+const maxP = vs.length ? Math.max(...vs) : 0;
+
+const gaps = [];
+for (let i = 1; i < maxP; i++) if (!vs.includes(i)) gaps.push(i);
+
+const inL = db.outgoing
+    .filter(o => o.seriesId === sr.id)
+    .sort((a,b)=>a.number-b.number);
+
+const inLNums = inL.map(o => o.number);
+const maxL = inLNums.length ? Math.max(...inLNums) : 0;
+const nextN = Math.max(maxP, maxL) + 1;
+
+let show = false;
+if (curFumTab === "tutto") show = true;
+if (curFumTab === "da prendere" && (inL.length > 0 || gaps.length > 0)) show = true;
+if (curFumTab === "mancanti" && gaps.length > 0) show = true;
+
+
+            
 
             if (show) { 
                 h += `<div class="card">
@@ -732,8 +743,16 @@ window.rFum = () => {
                                 <b>${sr.name}</b>
                                 <div style="display:flex; flex-wrap:wrap; margin-top:5px; gap:4px">
                                     ${gaps.map(n => `<div class="vol-container"><span class="badge bg-danger">MANCANTE</span><span class="volumeStatic">${n}</span></div>`).join('')}
-                                    ${inL.map(n => `<div class="vol-container"><span class="badge bg-warn">DA PRENDERE</span><button class="volumeStatic" style="border:1.5px solid var(--warn)" onclick="tglOut('${sr.id}', ${n})">${n} ✕</button></div>`).join('')}
-                                    <div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button></div>
+                                    ${inL.map(o => `<div class="vol-container">
+    <span class="badge ${o.bought ? 'bg-success' : 'bg-warn'}">${o.bought ? 'PRESO' : 'DA PRENDERE'}</span>
+    <button class="volumeStatic"
+        style="${o.bought ? 'background:var(--success); color:white; border:1.5px solid var(--success)' : 'border:1.5px solid var(--warn)'}"
+        onclick="tglOut('${sr.id}', ${o.number})">
+        ${o.number}${curFumTab === 'tutto' && !o.bought ? ' ✕' : ''}
+    </button>
+</div>`).join('')}
+                                     
+                                     <div class="vol-container"><span class="badge" style="background:#ccc">NEXT</span><button class="ok" style="width:100%; height:32px; padding:0" onclick="tglOut('${sr.id}', ${nextN})">${nextN} +</button></div>
                                 </div>
                             </div>
                         </div>
@@ -758,8 +777,27 @@ window.rFum = () => {
 
         window.addWi = () => { const t = document.getElementById("wiT").value; if(t) { db.wishlist.push({ id: crypto.randomUUID(), title: t, vols: document.getElementById("wiV").value, groupId: getActiveGroup() }); save(); rFum(); }};
         window.delWi = (id) => { db.wishlist = db.wishlist.filter(x => x.id !== id); save(); rFum(); };
-        window.tglOut = (sid, n) => { const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n); if (idx > -1) db.outgoing.splice(idx, 1); else db.outgoing.push({ seriesId: sid, number: n }); save(); rFum(); };
+window.tglOut = (sid, n) => {
+    const idx = db.outgoing.findIndex(o => o.seriesId === sid && o.number === n);
 
+    if (curFumTab === "da prendere") {
+        if (idx > -1) {
+            db.outgoing[idx].bought = true;
+        }
+    } else {
+        if (idx > -1) {
+            db.outgoing.splice(idx, 1);
+        } else {
+            db.outgoing.push({ seriesId: sid, number: n, bought: false });
+        }
+    }
+
+    save();
+    rFum();
+};
+
+
+        
         function usersTab(c) {
             c.innerHTML = `<h2 class="section-title">GRUPPI</h2><div id="gL"></div><div class="card"><input id="gn" placeholder="Nuovo Gruppo"><button class="ok" onclick="cG()">CREA</button></div><h2 class="section-title">PROFILI</h2><div id="uList"></div><div class="card"><h3>Nuovo Profilo</h3><input id="un" placeholder="Nome"><select id="ug">${db.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}</select><input type="color" id="uc" value="#6c5ce7"><button class="ok" onclick="cU()">AGGIUNGI</button></div>`;
             db.groups.forEach(g => { document.getElementById("gL").innerHTML += `<div class="card" style="display:flex; justify-content:space-between"><b>${g.name}</b> ${g.id!=='default'?`<button class="danger" onclick="dG('${g.id}')">X</button>`:''}</div>`; });
