@@ -555,11 +555,23 @@ if (show) {
         // --- STATISTICHE (ORDINE E PERCENTUALI) ---
 
         function statsTab(c) {
-    const gid = getActiveGroup();
-    const gSagas = db.sagas.filter(s => s.groupId === gid).sort((a,b) => a.name.localeCompare(b.name));
-    const gSeries = db.series.filter(s => s.groupId === gid);
-    const gVols = db.volumes.filter(v => v.groupId === gid);
-    const gUsers = db.users.filter(u => u.groupId === gid);
+   const gid = getActiveGroup();
+
+const gSeries = db.series.filter(s =>
+    s.groupId === gid && s.status !== "Da Iniziare"
+);
+
+const gSeriesIds = gSeries.map(s => s.id);
+
+const gVols = db.volumes.filter(v =>
+    v.groupId === gid && gSeriesIds.includes(v.seriesId)
+);
+
+const gSagas = db.sagas
+    .filter(s => s.groupId === gid && gSeries.some(sr => sr.sagaId === s.id))
+    .sort((a,b) => a.name.localeCompare(b.name));
+
+const gUsers = db.users.filter(u => u.groupId === gid);
 
     // ===== STATISTICHE EDITORI =====
        // ===== STATISTICHE EDITORI =====
