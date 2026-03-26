@@ -414,9 +414,13 @@ const srs = db.series.filter(r => {
                 <option value="NEW_OTH">Non hai iniziato, ma altri sì</option>
                 <option value="NONE">Nessuno ha iniziato</option>
             </select>
-           <div style="margin-top:10px; font-size:13px">
+
+          <div style="margin-top:10px; font-size:13px">
     <div>
         <input type="checkbox" id="exOne" onchange="rAd()"> Escludi serie con solo 1 volume letto
+    </div>
+    <div style="margin-top:5px">
+        <input type="checkbox" id="exSingleVol" onchange="rAd()"> Escludi singoli volumi
     </div>
     <div style="margin-top:5px">
         <input type="checkbox" id="onlyTerm" onchange="rAd()"> Mostra solo serie complete (Terminata)
@@ -430,9 +434,11 @@ const srs = db.series.filter(r => {
       window.rAd = () => {
     const gid = getActiveGroup();
     const uid = db.currentUser;
-    const f = document.getElementById("adF").value;
-    const exOne = document.getElementById("exOne").checked;
-    const onlyTerm = document.getElementById("onlyTerm").checked;
+          
+const f = document.getElementById("adF").value;
+const exOne = document.getElementById("exOne").checked;
+const exSingleVol = document.getElementById("exSingleVol").checked;
+const onlyTerm = document.getElementById("onlyTerm").checked;
 
     const otherUsers = db.users.filter(u => u.id !== uid && u.groupId === gid);
 
@@ -445,7 +451,8 @@ const srs = db.series.filter(r => {
             if (onlyTerm && s.status !== "Terminata") return;
 
             const vols = db.volumes.filter(v => v.seriesId === s.id);
-            if (vols.length === 0) return;
+if (vols.length === 0) return;
+if (exSingleVol && vols.length === 1) return;
 
             const vids = vols.map(v => v.id);
 
