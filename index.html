@@ -454,10 +454,15 @@ const srs = db.series.filter(r => {
             if (exOne && myRead === 1) return;
 
             const total = vids.length;
-            const mancanti = total - myRead;
-            const perc = Math.round((myRead / total) * 100);
+const mancanti = total - myRead;
+const perc = Math.round((myRead / total) * 100);
 
-           let show = false;
+const sortedVols = vols.sort((a, b) => a.number - b.number);
+const nextToRead = sortedVols.find(v =>
+    !db.read.some(r => r.userId === uid && r.volId === v.id)
+);
+
+let show = false;
 
 if (f === "ALL" && myRead < total) show = true;
 
@@ -477,13 +482,15 @@ if (f === "OTH" || f === "NEW_OTH") {
 
 if (f === "NONE" && myRead === 0 && !db.read.some(rd => vids.includes(rd.volId))) show = true;
 
-            if (show) {
-                list.push({
-                    ...s,
-                    perc: perc,
-                    mancanti: mancanti
-                });
-            }
+if (show) {
+    list.push({
+        ...s,
+        perc: perc,
+        mancanti: mancanti,
+        nextToRead: nextToRead ? nextToRead.number : null
+    });
+}
+            
         });
 
     // 🔥 ORDINAMENTO NUOVO
@@ -498,18 +505,21 @@ if (f === "NONE" && myRead === 0 && !db.read.some(rd => vids.includes(rd.volId))
     );
 
    document.getElementById("adRes").innerHTML = `
-    <div class="advice-grid">
-        ${list.map(s => `
-            <div class="advice-card">
-                <img src="${s.img}">
-                <b>${s.name}</b><br>
-                <span class="badge bg-success">${s.perc}% completato</span><br>
-                <span style="font-size:11px; color:#555">
-                    ${s.mancanti} volumi mancanti
-                </span>
-            </div>
-        `).join('')}
-    </div>
+ <div class="advice-grid">
+     ${list.map(s => `
+         <div class="advice-card">
+             <img src="${s.img}">
+             <b>${s.name}</b><br>
+             <span class="badge bg-success">${s.perc}% completato</span><br>
+             <span style="font-size:11px; color:#555">
+                 ${s.mancanti} volumi mancanti
+             </span><br>
+             <span style="font-size:11px; color:#333; font-weight:bold">
+                 ${s.nextToRead ? `Leggi dal vol. ${s.nextToRead}` : 'Serie completa'}
+             </span>
+         </div>
+     `).join('')}
+ </div>
 `;
 };
           
