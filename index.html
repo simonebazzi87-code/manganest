@@ -749,8 +749,8 @@ const gUsers = db.users.filter(u => u.groupId === gid);
 const sagaTableRows = gSagas.map(sg => {
     let row = `<tr>
         <td style="padding:6px; border-bottom:1px solid #eee; font-weight:bold; word-break:break-word; line-height:1.2; font-size:12px; white-space:normal;">
-    ${sg.name}
-</td>
+            ${sg.name}
+        </td>`;
 
     gUsers.forEach(u => {
         const sagaSeries = gSeries.filter(sr => sr.sagaId === sg.id);
